@@ -19,6 +19,8 @@ class GameStore {
     const players = new Map([[hostPlayerId, { nickname: hostNickname, playerId: 'player-0' }]])
     const gameState = initGame([hostNickname], totalRounds)
 
+    console.log('[GameStore] Attempting to create room:', { roomId, hostPlayerId, totalRounds })
+
     const { error } = await supabase
       .from('rooms')
       .insert({
@@ -33,8 +35,11 @@ class GameStore {
       })
 
     if (error) {
-      console.error('[GameStore] Error creating room:', error)
-      throw new Error('Failed to create room')
+      console.error('[GameStore] Supabase error creating room:', error)
+      console.error('[GameStore] Error code:', error.code)
+      console.error('[GameStore] Error message:', error.message)
+      console.error('[GameStore] Error details:', error.details)
+      throw new Error(`Failed to create room: ${error.message}`)
     }
 
     console.log(`[GameStore] Created room ${roomId} for ${hostNickname}`)
