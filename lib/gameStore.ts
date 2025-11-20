@@ -148,7 +148,9 @@ class GameStore {
   private mapRowToRoom(row: RoomRow): Room {
     const gameStateWithPlayers = row.game_state as any
     const playersObj = gameStateWithPlayers._players || {}
-    const players = new Map(Object.entries(playersObj))
+    const players = new Map(
+      Object.entries(playersObj) as [string, { nickname: string; playerId: string }][]
+    )
 
     // Remove _players from gameState before using it
     const { _players, ...gameState } = gameStateWithPlayers
