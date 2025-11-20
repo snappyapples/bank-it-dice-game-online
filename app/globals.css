@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #f1f5f9;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Poppins', sans-serif;
+}
+
+.form-input-number {
+  -moz-appearance: textfield;
+}
+
+.form-input-number::-webkit-outer-spin-button,
+.form-input-number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 2D Bouncing Dice Animations */
+.dice-bounce-1 {
+  animation: bounce-spin-1 5s ease-in-out infinite;
+}
+
+.dice-bounce-2 {
+  animation: bounce-spin-2 5s ease-in-out infinite;
+}
+
+@keyframes bounce-spin-1 {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  10% {
+    transform: translateY(-60px) rotate(45deg) scale(1.1);
+  }
+  20% {
+    transform: translateY(0) rotate(90deg) scale(1);
+  }
+  30% {
+    transform: translateY(-40px) rotate(135deg) scale(1.05);
+  }
+  40% {
+    transform: translateY(0) rotate(180deg) scale(1);
+  }
+  50% {
+    transform: translateY(-50px) rotate(225deg) scale(1.08);
+  }
+  60% {
+    transform: translateY(0) rotate(270deg) scale(1);
+  }
+  70% {
+    transform: translateY(-30px) rotate(315deg) scale(1.03);
+  }
+  80% {
+    transform: translateY(0) rotate(360deg) scale(1);
+  }
+  90% {
+    transform: translateY(-20px) rotate(405deg) scale(1.02);
+  }
+}
+
+@keyframes bounce-spin-2 {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  12% {
+    transform: translateY(-50px) rotate(-50deg) scale(1.08);
+  }
+  24% {
+    transform: translateY(0) rotate(-100deg) scale(1);
+  }
+  36% {
+    transform: translateY(-45px) rotate(-150deg) scale(1.06);
+  }
+  48% {
+    transform: translateY(0) rotate(-200deg) scale(1);
+  }
+  60% {
+    transform: translateY(-55px) rotate(-250deg) scale(1.09);
+  }
+  72% {
+    transform: translateY(0) rotate(-300deg) scale(1);
+  }
+  84% {
+    transform: translateY(-35px) rotate(-350deg) scale(1.04);
+  }
+  96% {
+    transform: translateY(0) rotate(-360deg) scale(1);
+  }
+}
