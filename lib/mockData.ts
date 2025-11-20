@@ -9,6 +9,7 @@ export const mockGameState: GameState = {
       hasBankedThisRound: false,
       isCurrentRoller: true,
       status: 'in',
+      pointsEarnedThisRound: 0,
     },
     {
       id: '2',
@@ -17,6 +18,7 @@ export const mockGameState: GameState = {
       hasBankedThisRound: true,
       isCurrentRoller: false,
       status: 'banked',
+      pointsEarnedThisRound: 120,
     },
     {
       id: '3',
@@ -25,6 +27,7 @@ export const mockGameState: GameState = {
       hasBankedThisRound: false,
       isCurrentRoller: false,
       status: 'in',
+      pointsEarnedThisRound: 0,
     },
     {
       id: '4',
@@ -33,6 +36,7 @@ export const mockGameState: GameState = {
       hasBankedThisRound: false,
       isCurrentRoller: false,
       status: 'in',
+      pointsEarnedThisRound: 0,
     },
   ],
   roundNumber: 3,
@@ -55,6 +59,7 @@ export const mockGameState: GameState = {
       die2: 5,
       result: '10',
       effect: 'Doubles! Bank +70',
+      bankAmount: 70,
     },
     {
       rollNumber: 2,
@@ -63,6 +68,7 @@ export const mockGameState: GameState = {
       die2: 4,
       result: '7',
       effect: '+7 to bank (special)',
+      bankAmount: 77,
     },
     {
       rollNumber: 3,
@@ -71,6 +77,7 @@ export const mockGameState: GameState = {
       die2: 6,
       result: '8',
       effect: 'Bank doubled to 156',
+      bankAmount: 156,
     },
     {
       rollNumber: 4,
@@ -79,6 +86,7 @@ export const mockGameState: GameState = {
       die2: 5,
       result: '11',
       effect: '+11 to bank',
+      bankAmount: 167,
     },
     {
       rollNumber: 5,
@@ -87,6 +95,8 @@ export const mockGameState: GameState = {
       die2: 3,
       result: '7',
       effect: '+7 to bank',
+      bankAmount: 178,
     },
   ],
+  roundHistory: [],
 }
