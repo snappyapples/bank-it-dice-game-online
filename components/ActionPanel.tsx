@@ -35,16 +35,22 @@ export default function ActionPanel({
     <div className="bg-[#141414] border border-white/10 rounded-lg shadow-xl p-6 backdrop-blur-sm">
       <h3 className="text-xl font-bold mb-4 text-gray-200 uppercase tracking-wider">Actions</h3>
 
-      {/* Last Roll Display */}
-      {lastRoll && (
-        <div className="mb-6">
-          <div className="text-sm text-gray-400 mb-2 uppercase tracking-wider">Last Roll</div>
-          <RollingDice die1={lastRoll.die1} die2={lastRoll.die2} isRolling={isRolling} />
+      {/* Dice Display */}
+      <div className="mb-6">
+        <div className="text-sm text-gray-400 mb-2 uppercase tracking-wider">
+          {lastRoll ? 'Last Roll' : 'Dice'}
+        </div>
+        <RollingDice
+          die1={lastRoll?.die1 ?? 1}
+          die2={lastRoll?.die2 ?? 1}
+          isRolling={isRolling}
+        />
+        {lastRoll && (
           <div className={`text-center text-lg font-semibold ${getEffectColor(lastRoll.effectType)}`}>
             {lastRoll.effectText}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Action Buttons */}
       <div className="space-y-3 mt-6">
