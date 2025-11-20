@@ -14,12 +14,15 @@ export function rollDice(): { die1: number; die2: number } {
  * Initialize a new game
  */
 export function initGame(playerNicknames: string[], totalRounds: number): GameState {
+  // Randomly select starting player
+  const randomStartIndex = Math.floor(Math.random() * playerNicknames.length)
+
   const players: Player[] = playerNicknames.map((nickname, index) => ({
     id: `player-${index}`,
     nickname,
     score: 0,
     hasBankedThisRound: false,
-    isCurrentRoller: index === 0,
+    isCurrentRoller: index === randomStartIndex,
     status: 'in',
     pointsEarnedThisRound: 0,
   }))
@@ -302,11 +305,15 @@ export function startNewRound(state: GameState): GameState {
     }
   }
 
-  // Reset for new round
+  // Find the last roller from the previous round and advance to next player
+  const lastRollerIndex = state.players.findIndex(p => p.isCurrentRoller)
+  const nextRollerIndex = (lastRollerIndex + 1) % state.players.length
+
+  // Reset for new round with next player as roller
   const updatedPlayers = state.players.map((p, index) => ({
     ...p,
     hasBankedThisRound: false,
-    isCurrentRoller: index === 0,
+    isCurrentRoller: index === nextRollerIndex,
     status: 'in' as const,
     pointsEarnedThisRound: 0,
   }))
