@@ -353,6 +353,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               lastRoll={pendingGameState?.lastRoll ?? gameState.lastRoll}
               isRolling={isRolling}
               isBustPhase={isBustPhase}
+              currentRollerName={gameState.players.find(p => p.isCurrentRoller)?.nickname || ''}
               onRoll={handleRoll}
               onBank={handleBank}
             />

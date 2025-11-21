@@ -12,6 +12,7 @@ interface ActionPanelProps {
   lastRoll?: RollEffect
   isRolling?: boolean
   isBustPhase?: boolean
+  currentRollerName?: string
   onRoll: () => void
   onBank: () => void
 }
@@ -22,6 +23,7 @@ export default function ActionPanel({
   lastRoll,
   isRolling = false,
   isBustPhase = false,
+  currentRollerName = '',
   onRoll,
   onBank,
 }: ActionPanelProps) {
@@ -117,7 +119,11 @@ export default function ActionPanel({
             }
           `}
         >
-          {isRolling ? '🎲 Rolling...' : '🎲 Roll Dice'}
+          {isRolling
+            ? '🎲 Rolling...'
+            : isCurrentPlayer
+              ? '🎲 Roll Dice'
+              : `🎲 ${currentRollerName}'s turn to roll`}
         </button>
 
         <button
