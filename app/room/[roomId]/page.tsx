@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, useRef, use } from 'react'
 import BankPanel from '@/components/BankPanel'
 import PlayersPanel from '@/components/PlayersPanel'
 import ActionPanel from '@/components/ActionPanel'
@@ -16,6 +16,7 @@ function getPlayerId(): string {
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params)
   const [gameState, setGameState] = useState<GameState | null>(null)
+  const [pendingGameState, setPendingGameState] = useState<GameState | null>(null)
   const [gameStarted, setGameStarted] = useState(false)
   const [playerCount, setPlayerCount] = useState(0)
   const [isRolling, setIsRolling] = useState(false)
@@ -23,6 +24,17 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const [playerId] = useState(() => getPlayerId())
   const [hostPlayerId, setHostPlayerId] = useState('')
   const [currentRound, setCurrentRound] = useState(1)
+  const [lastRollId, setLastRollId] = useState<string | null>(null)
+
+  // Refs to access current values in polling callback
+  const lastRollIdRef = useRef<string | null>(null)
+  const isRollingRef = useRef(false)
+  const pendingGameStateRef = useRef<GameState | null>(null)
+
+  // Keep refs in sync with state
+  useEffect(() => { lastRollIdRef.current = lastRollId }, [lastRollId])
+  useEffect(() => { isRollingRef.current = isRolling }, [isRolling])
+  useEffect(() => { pendingGameStateRef.current = pendingGameState }, [pendingGameState])
 
   // Poll for game state updates
   useEffect(() => {
@@ -34,7 +46,42 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         }
 
         const data = await response.json()
-        setGameState(data.gameState)
+
+        // Check if this is a new roll
+        const newLastRoll = data.gameState?.lastRoll
+        if (newLastRoll) {
+          const newRollId = `${newLastRoll.die1}-${newLastRoll.die2}-${data.gameState.rollCountThisRound}`
+
+          if (lastRollIdRef.current === null) {
+            // First load - just set everything normally
+            lastRollIdRef.current = newRollId
+            setLastRollId(newRollId)
+            setGameState(data.gameState)
+          } else if (newRollId !== lastRollIdRef.current && !isRollingRef.current) {
+            // New roll detected from another player - trigger animation
+            lastRollIdRef.current = newRollId
+            isRollingRef.current = true  // Update ref immediately to prevent race conditions
+            setLastRollId(newRollId)
+            setPendingGameState(data.gameState)
+            setIsRolling(true)
+
+            // After animation, update displayed game state
+            setTimeout(() => {
+              isRollingRef.current = false
+              setIsRolling(false)
+              setGameState(data.gameState)
+              setPendingGameState(null)
+            }, 3000)
+          } else if (newRollId === lastRollIdRef.current && !isRollingRef.current) {
+            // Same roll, not animating - update other state normally (scores, etc.)
+            setGameState(data.gameState)
+          }
+          // If animating, skip this update (we'll get fresh data after animation)
+        } else {
+          // No lastRoll yet - update normally
+          setGameState(data.gameState)
+        }
+
         setGameStarted(data.started)
         setPlayerCount(data.playerCount)
         setHostPlayerId(data.hostPlayerId)
@@ -61,6 +108,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     }
   }, [gameState, currentRound])
 
+
   const handleStartGame = async () => {
     try {
       const response = await fetch(`/api/rooms/${roomId}/start`, {
@@ -79,31 +127,41 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const handleRoll = async () => {
     if (isRolling) return
 
-    setIsRolling(true)
+    try {
+      // Call API first to get dice values BEFORE starting animation
+      const response = await fetch(`/api/rooms/${roomId}/roll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId }),
+      })
 
-    // Add suspenseful delay for 3D dice animation (5 seconds)
-    setTimeout(async () => {
-      try {
-        const response = await fetch(`/api/rooms/${roomId}/roll`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerId }),
-        })
-
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Failed to roll')
-        }
-
+      if (!response.ok) {
         const data = await response.json()
-        setGameState(data.gameState)
-        setError('')
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to roll')
-      } finally {
-        setIsRolling(false)
+        throw new Error(data.error || 'Failed to roll')
       }
-    }, 5000)
+
+      const data = await response.json()
+      setError('')
+
+      // Store pending state (dice values for animation) but don't update displayed state yet
+      setPendingGameState(data.gameState)
+
+      // Update lastRollId so the polling effect doesn't trigger a duplicate animation
+      const newRollId = `${data.gameState.lastRoll.die1}-${data.gameState.lastRoll.die2}-${data.gameState.rollCountThisRound}`
+      setLastRollId(newRollId)
+
+      // Start the animation
+      setIsRolling(true)
+
+      // Wait for animation to complete, then update the full game state (bank, history, etc.)
+      setTimeout(() => {
+        setIsRolling(false)
+        setGameState(data.gameState)
+        setPendingGameState(null)
+      }, 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to roll')
+    }
   }
 
   const handleBank = async () => {
@@ -262,7 +320,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             <ActionPanel
               isCurrentPlayer={isCurrentPlayer}
               hasBanked={hasBanked}
-              lastRoll={gameState.lastRoll}
+              lastRoll={pendingGameState?.lastRoll ?? gameState.lastRoll}
               isRolling={isRolling}
               onRoll={handleRoll}
               onBank={handleBank}

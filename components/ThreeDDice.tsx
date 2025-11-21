@@ -1,76 +1,152 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 interface ThreeDDiceProps {
   value: number
   isRolling: boolean
   delay?: number // Delay in ms before this die starts rolling
+  duration?: number // Duration of the roll animation in ms
 }
 
-export default function ThreeDDice({ value, isRolling, delay = 0 }: ThreeDDiceProps) {
-  const [isAnimating, setIsAnimating] = useState(false)
+export default function ThreeDDice({ value, isRolling, delay = 0, duration = 2500 }: ThreeDDiceProps) {
+  const [displayValue, setDisplayValue] = useState(value)
+  const diceRef = useRef<HTMLDivElement>(null)
+  const animationRef = useRef<Animation | null>(null)
 
-  useEffect(() => {
-    if (isRolling && delay > 0) {
-      // Delay before starting animation
-      const timer = setTimeout(() => {
-        setIsAnimating(true)
-      }, delay)
-      return () => clearTimeout(timer)
-    } else if (isRolling) {
-      setIsAnimating(true)
-    } else {
-      setIsAnimating(false)
-    }
-  }, [isRolling, delay])
-
-  // Map die value to rotation angles
+  // Map die value to rotation angles (to show face flat to viewer)
+  // Face positions: 1=front, 2=right, 3=left, 4=top, 5=bottom, 6=back
   const getRotation = (val: number) => {
     switch (val) {
-      case 1: return 'rotateX(0deg) rotateY(0deg)'
-      case 2: return 'rotateX(0deg) rotateY(90deg)'
-      case 3: return 'rotateX(0deg) rotateY(-90deg)'
-      case 4: return 'rotateX(90deg) rotateY(0deg)'
-      case 5: return 'rotateX(-90deg) rotateY(0deg)'
-      case 6: return 'rotateX(180deg) rotateY(0deg)'
-      default: return 'rotateX(0deg) rotateY(0deg)'
+      case 1: return { x: 0, y: 0 }       // Front face - no rotation
+      case 2: return { x: 0, y: -90 }     // Right face - rotate cube left
+      case 3: return { x: 0, y: 90 }      // Left face - rotate cube right
+      case 4: return { x: -90, y: 0 }     // Top face - tilt cube down
+      case 5: return { x: 90, y: 0 }      // Bottom face - tilt cube up
+      case 6: return { x: 0, y: 180 }     // Back face - rotate 180
+      default: return { x: 0, y: 0 }
     }
   }
+
+  // Store the target value in a ref so animation can access latest value without restarting
+  const targetValueRef = useRef(value)
+  targetValueRef.current = value
+
+  useEffect(() => {
+    if (!diceRef.current) return
+
+    if (isRolling) {
+      const startAnimation = () => {
+        if (!diceRef.current) return
+
+        // Get the final rotation for the target value
+        const finalRotation = getRotation(targetValueRef.current)
+
+        // Calculate spins that will land exactly on the target face
+        // Use whole number of spins + the final rotation to ensure correct landing
+        const baseSpinsX = Math.floor(Math.random() * 3) + 6 // 6-8 full rotations
+        const baseSpinsY = Math.floor(Math.random() * 4) + 8 // 8-11 full rotations
+
+        // Total rotation = full spins + final position
+        const totalX = (baseSpinsX * 360) + finalRotation.x
+        const totalY = (baseSpinsY * 360) + finalRotation.y
+
+        console.log(`[Dice] Animating to value ${targetValueRef.current}, final rotation: (${finalRotation.x}, ${finalRotation.y})`)
+
+        // Cancel any existing animation
+        if (animationRef.current) {
+          animationRef.current.cancel()
+        }
+
+        // Single animation that spins and lands on correct face
+        animationRef.current = diceRef.current.animate(
+          [
+            { transform: 'rotateX(0deg) rotateY(0deg)' },
+            { transform: `rotateX(${totalX}deg) rotateY(${totalY}deg)` }
+          ],
+          {
+            duration: duration,
+            easing: 'cubic-bezier(0.15, 0, 0.2, 1)', // Fast start, slow end for natural deceleration
+            fill: 'forwards'
+          }
+        )
+
+        animationRef.current.onfinish = () => {
+          console.log(`[Dice] Animation finished, showing value ${targetValueRef.current}`)
+          setDisplayValue(targetValueRef.current)
+          // Set the final transform to the normalized rotation (without all the extra spins)
+          if (diceRef.current) {
+            diceRef.current.style.transform = `rotateX(${finalRotation.x}deg) rotateY(${finalRotation.y}deg)`
+          }
+          animationRef.current = null
+        }
+      }
+
+      if (delay > 0) {
+        console.log(`[Dice] Will start in ${delay}ms`)
+        const timer = setTimeout(startAnimation, delay)
+        return () => clearTimeout(timer)
+      } else {
+        startAnimation()
+      }
+    } else {
+      // Not rolling - show the current value
+      if (animationRef.current) {
+        animationRef.current.cancel()
+        animationRef.current = null
+      }
+      const rotation = getRotation(value)
+      if (diceRef.current) {
+        diceRef.current.style.transform = `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`
+      }
+      setDisplayValue(value)
+    }
+  }, [isRolling, delay, duration]) // Removed 'value' from dependencies
+
+  // Update display when value prop changes (when not rolling)
+  useEffect(() => {
+    if (!isRolling) {
+      setDisplayValue(value)
+      const rotation = getRotation(value)
+      if (diceRef.current) {
+        diceRef.current.style.transform = `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`
+      }
+    }
+  }, [value, isRolling])
 
   return (
     <div className="perspective-container" style={{ perspective: '1000px' }}>
       <div
-        className={`dice-3d ${isAnimating ? 'rolling' : ''}`}
+        ref={diceRef}
+        className="dice-3d"
         style={{
-          transform: isAnimating ? undefined : getRotation(value),
           width: '100px',
           height: '100px',
           position: 'relative',
           transformStyle: 'preserve-3d',
-          transition: isAnimating ? 'none' : 'transform 0.6s ease-out',
+          transform: `rotateX(${getRotation(displayValue).x}deg) rotateY(${getRotation(displayValue).y}deg)`,
         }}
       >
         {/* Face 1 (front) */}
-        <div className="dice-face dice-face-1" style={{ transform: 'rotateY(0deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: 'rotateY(0deg) translateZ(50px)' }}>
           <div className="dot" style={{ gridColumn: '2', gridRow: '2' }}></div>
         </div>
 
         {/* Face 2 (right) */}
-        <div className="dice-face dice-face-2" style={{ transform: 'rotateY(90deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: 'rotateY(90deg) translateZ(50px)' }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '3' }}></div>
         </div>
 
         {/* Face 3 (left) */}
-        <div className="dice-face dice-face-3" style={{ transform: 'rotateY(-90deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: 'rotateY(-90deg) translateZ(50px)' }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '2', gridRow: '2' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '3' }}></div>
         </div>
 
         {/* Face 4 (top) */}
-        <div className="dice-face dice-face-4" style={{ transform: 'rotateX(90deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: 'rotateX(90deg) translateZ(50px)' }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '1', gridRow: '3' }}></div>
@@ -78,7 +154,7 @@ export default function ThreeDDice({ value, isRolling, delay = 0 }: ThreeDDicePr
         </div>
 
         {/* Face 5 (bottom) */}
-        <div className="dice-face dice-face-5" style={{ transform: 'rotateX(-90deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: 'rotateX(-90deg) translateZ(50px)' }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '2', gridRow: '2' }}></div>
@@ -87,7 +163,7 @@ export default function ThreeDDice({ value, isRolling, delay = 0 }: ThreeDDicePr
         </div>
 
         {/* Face 6 (back) */}
-        <div className="dice-face dice-face-6" style={{ transform: 'rotateY(180deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: 'rotateY(180deg) translateZ(50px)' }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '1', gridRow: '2' }}></div>
@@ -98,19 +174,6 @@ export default function ThreeDDice({ value, isRolling, delay = 0 }: ThreeDDicePr
       </div>
 
       <style jsx>{`
-        .dice-3d.rolling {
-          animation: roll 2.5s ease-out;
-        }
-
-        @keyframes roll {
-          0% {
-            transform: rotateX(0deg) rotateY(0deg);
-          }
-          100% {
-            transform: rotateX(${Math.random() * 4 + 3}turn) rotateY(${Math.random() * 4 + 3}turn);
-          }
-        }
-
         .dice-face {
           position: absolute;
           width: 100px;

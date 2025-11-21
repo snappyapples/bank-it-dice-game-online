@@ -1,5 +1,10 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { RollEffect } from '@/lib/types'
-import RollingDice from './RollingDice'
+import ThreeDDice from './ThreeDDice'
+
+const ROLL_DURATION = 2500  // Dice roll for 2.5 seconds
 
 interface ActionPanelProps {
   isCurrentPlayer: boolean
@@ -18,6 +23,26 @@ export default function ActionPanel({
   onRoll,
   onBank,
 }: ActionPanelProps) {
+  const [isBouncing, setIsBouncing] = useState(false)
+  const [showResult, setShowResult] = useState(true)
+
+  // Handle bounce animation when roll completes
+  useEffect(() => {
+    if (isRolling) {
+      setShowResult(false)
+      setIsBouncing(false)
+    } else if (lastRoll) {
+      // Small delay to sync with dice animation finishing
+      const timer = setTimeout(() => {
+        setShowResult(true)
+        setIsBouncing(true)
+        // Stop bouncing after a few bounces
+        setTimeout(() => setIsBouncing(false), 1500)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [isRolling, lastRoll])
+
   const getEffectColor = (effectType?: string) => {
     if (!effectType) return 'text-gray-400'
     switch (effectType) {
@@ -31,21 +56,45 @@ export default function ActionPanel({
     }
   }
 
+  const die1Value = lastRoll?.die1 ?? 1
+  const die2Value = lastRoll?.die2 ?? 1
+  const total = die1Value + die2Value
+
   return (
     <div className="bg-[#141414] border border-white/10 rounded-lg shadow-xl p-6 backdrop-blur-sm">
       <h3 className="text-xl font-bold mb-4 text-gray-200 uppercase tracking-wider">Actions</h3>
 
-      {/* Dice Display */}
+      {/* 3D Dice Display - dice + dice = total */}
       <div className="mb-6">
-        <div className="text-sm text-gray-400 mb-2 uppercase tracking-wider">
-          {lastRoll ? 'Last Roll' : 'Dice'}
+        <div className="flex gap-4 items-center justify-center my-6">
+          {/* Die 1 */}
+          <ThreeDDice
+            value={die1Value}
+            isRolling={isRolling}
+            duration={ROLL_DURATION}
+          />
+
+          <div className="text-2xl font-bold text-gray-400">+</div>
+
+          {/* Die 2 */}
+          <ThreeDDice
+            value={die2Value}
+            isRolling={isRolling}
+            duration={ROLL_DURATION}
+          />
+
+          <div className="text-2xl font-bold text-gray-400">=</div>
+
+          {/* Total */}
+          <div className={`text-4xl font-bold transition-all duration-300 min-w-[60px] text-center ${
+            isRolling ? 'text-gray-400' : 'text-brand-lime'
+          } ${isBouncing ? 'animate-bounce' : ''}`}>
+            {isRolling ? '?' : total}
+          </div>
         </div>
-        <RollingDice
-          die1={lastRoll?.die1 ?? 1}
-          die2={lastRoll?.die2 ?? 1}
-          isRolling={isRolling}
-        />
-        {lastRoll && (
+
+        {/* Effect Text */}
+        {lastRoll && showResult && (
           <div className={`text-center text-lg font-semibold ${getEffectColor(lastRoll.effectType)}`}>
             {lastRoll.effectText}
           </div>
@@ -56,26 +105,26 @@ export default function ActionPanel({
       <div className="space-y-3 mt-6">
         <button
           onClick={onRoll}
-          disabled={!isCurrentPlayer || hasBanked}
+          disabled={!isCurrentPlayer || hasBanked || isRolling}
           className={`
             w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
             ${
-              isCurrentPlayer && !hasBanked
+              isCurrentPlayer && !hasBanked && !isRolling
                 ? 'bg-brand-lime hover:bg-brand-lime/90 hover:scale-105 text-black shadow-lg shadow-brand-lime/20 cursor-pointer'
                 : 'bg-gray-800 text-gray-600 cursor-not-allowed'
             }
           `}
         >
-          🎲 Roll Dice
+          {isRolling ? '🎲 Rolling...' : '🎲 Roll Dice'}
         </button>
 
         <button
           onClick={onBank}
-          disabled={hasBanked}
+          disabled={hasBanked || isRolling}
           className={`
             w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
             ${
-              !hasBanked
+              !hasBanked && !isRolling
                 ? 'bg-brand-teal hover:bg-brand-teal/90 hover:scale-105 text-white shadow-lg shadow-brand-teal/20 cursor-pointer'
                 : 'bg-gray-800 text-gray-600 cursor-not-allowed'
             }
@@ -89,7 +138,7 @@ export default function ActionPanel({
       <div className="mt-4 text-center text-sm text-gray-400">
         {hasBanked && <p>You have banked this round</p>}
         {!isCurrentPlayer && !hasBanked && <p>Waiting for other player...</p>}
-        {isCurrentPlayer && !hasBanked && <p className="text-brand-lime">Your turn to roll!</p>}
+        {isCurrentPlayer && !hasBanked && !isRolling && <p className="text-brand-lime">Your turn to roll!</p>}
       </div>
     </div>
   )
