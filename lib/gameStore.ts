@@ -56,8 +56,15 @@ class GameStore {
     const playerIndex = room.players.size
     room.players.set(playerId, { nickname, playerId: `player-${playerIndex}` })
 
-    // Reinitialize game with all players
-    const allNicknames = Array.from(room.players.values()).map(p => p.nickname)
+    // Reinitialize game with all players - SORT by playerId to ensure consistent order
+    // (JSON/database operations don't preserve Map insertion order)
+    const sortedPlayers = Array.from(room.players.values())
+      .sort((a, b) => {
+        const aNum = parseInt(a.playerId.replace('player-', ''))
+        const bNum = parseInt(b.playerId.replace('player-', ''))
+        return aNum - bNum
+      })
+    const allNicknames = sortedPlayers.map(p => p.nickname)
     const newGameState = initGame(allNicknames, room.totalRounds)
 
     const { error } = await supabase
