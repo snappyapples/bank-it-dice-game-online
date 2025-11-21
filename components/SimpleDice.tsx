@@ -1,3 +1,5 @@
+import React from 'react'
+
 interface SimpleDiceProps {
   value: number
 }
@@ -5,7 +7,7 @@ interface SimpleDiceProps {
 export default function SimpleDice({ value }: SimpleDiceProps) {
   // Render dice face with dots
   const renderDots = () => {
-    const dots: JSX.Element[] = []
+    const dots: React.ReactElement[] = []
 
     // Dot positions based on dice value
     const positions: { [key: number]: string[] } = {
