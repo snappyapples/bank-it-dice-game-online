@@ -8,6 +8,7 @@ const SOUND_URLS = {
   doubles: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3', // Bonus / win
   lucky7: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3', // Jackpot / special
   gameOver: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3', // Fanfare / victory
+  danger: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3', // Warning alert for risky phase
 }
 
 export type SoundEffect = keyof typeof SOUND_URLS

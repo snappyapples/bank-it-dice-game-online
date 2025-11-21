@@ -89,6 +89,11 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               } else if (effect === 'add70') {
                 soundManager.play('lucky7')
               }
+
+              // Play danger sound when entering risky phase (roll #4)
+              if (data.gameState.rollCountThisRound === 3) {
+                soundManager.play('danger')
+              }
             }, 3000)
           } else if (newRollId === lastRollIdRef.current && !isRollingRef.current) {
             // Same roll, not animating - update other state normally (scores, etc.)
@@ -193,6 +198,11 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           playSound('doubles')
         } else if (effect === 'add70') {
           playSound('lucky7')
+        }
+
+        // Play danger sound when entering risky phase (roll #4)
+        if (data.gameState.rollCountThisRound === 3) {
+          playSound('danger')
         }
       }, 3000)
     } catch (err) {
