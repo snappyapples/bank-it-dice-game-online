@@ -407,7 +407,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                     const pointsBehind = maxScore - currentPlayer.score
 
                     if (maxScore === 0) {
-                      return <span className="text-gray-400">Game just started - roll to build the bank!</span>
+                      return <span className="text-gray-400">Game just started</span>
                     } else if (isAtMax && leadersCount > 1) {
                       return <span className="text-yellow-400">Tied for first place</span>
                     } else if (isAtMax) {
