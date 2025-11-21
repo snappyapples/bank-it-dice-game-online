@@ -1,9 +1,9 @@
 'use client'
 
-// Sound effect URLs (free sounds from mixkit.co)
+// Sound effect URLs (free sounds from SoundBible and Mixkit)
 const SOUND_URLS = {
-  roll: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3', // Dice shake
-  bank: 'https://assets.mixkit.co/active_storage/sfx/888/888-preview.mp3', // Cash register / coins
+  roll: 'https://soundbible.com/grab.php?id=182&type=mp3', // Shake and roll dice (SoundBible)
+  bank: 'https://soundbible.com/grab.php?id=333&type=mp3', // Cash register cha-ching (SoundBible)
   bust: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3', // Negative / fail
   doubles: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3', // Bonus / win
   lucky7: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3', // Jackpot / special
