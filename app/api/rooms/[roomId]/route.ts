@@ -18,9 +18,9 @@ export async function GET(
       )
     }
 
-    // Check if we need to auto-advance from bust phase (5 second delay)
+    // Check if we need to auto-advance from bust phase (10 second delay)
     let gameState = room.gameState
-    const newGameState = checkBustTransition(gameState, 5000)
+    const newGameState = checkBustTransition(gameState, 10000)
 
     // If state changed (bust delay passed), update the database
     if (newGameState !== gameState) {

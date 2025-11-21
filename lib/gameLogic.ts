@@ -285,7 +285,7 @@ function endRoundBust(state: GameState): GameState {
  * Check if bust delay has passed and transition to new round if needed
  * Call this when getting game state to auto-advance from bust
  */
-export function checkBustTransition(state: GameState, delayMs: number = 5000): GameState {
+export function checkBustTransition(state: GameState, delayMs: number = 10000): GameState {
   if (state.phase !== 'bust' || !state.bustAt) {
     return state
   }
