@@ -195,6 +195,8 @@ export function applyBank(state: GameState, playerId: string): GameState {
     return state
   }
 
+  const wasCurrentRoller = player.isCurrentRoller
+
   // Add bank value to player's score
   const updatedPlayers = state.players.map((p) =>
     p.id === playerId
@@ -219,8 +221,12 @@ export function applyBank(state: GameState, playerId: string): GameState {
     return startNewRound(newState)
   }
 
-  // Advance to next player who hasn't banked
-  return advanceTurn(newState)
+  // Only advance turn if the banking player was the current roller
+  if (wasCurrentRoller) {
+    return advanceTurn(newState)
+  }
+
+  return newState
 }
 
 /**
