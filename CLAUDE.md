@@ -39,8 +39,9 @@ User Action → API Route → Pure Game Logic → New State → Supabase → Pol
 - `initGame()` - Initialize new game with players
 - `applyRoll()` - Process dice roll, apply rules based on roll count
 - `applyBank()` - Handle player banking (only advances turn if banker was current roller)
-- `advanceTurn()` - Move to next active player
-- `checkBustTransition()` - Auto-advance from bust phase after 5-second delay
+- `advanceTurn()` / `advanceTurnFrom()` - Move to next active player
+- `checkBustTransition()` - Auto-advance from bust phase after 10-second delay
+- `startNewRound()` - Uses `lastRollerIndex` to properly advance starting player
 
 ### Game Rules
 
@@ -49,7 +50,7 @@ User Action → API Route → Pure Game Logic → New State → Supabase → Pol
 - Rolling 7 adds **70 points** (bonus)
 
 **Roll 4+** (`applyNormalRules()`):
-- Rolling 7 = **BUST** (bank empties, enters 'bust' phase for 5 seconds)
+- Rolling 7 = **BUST** (bank empties, enters 'bust' phase for 10 seconds)
 - Rolling doubles = **DOUBLES** entire bank
 - Other rolls add face value
 
@@ -79,7 +80,7 @@ User Action → API Route → Pure Game Logic → New State → Supabase → Pol
 
 `GamePhase = 'lobby' | 'inRound' | 'betweenRounds' | 'bust' | 'finished'`
 
-- **bust**: Shows BUST! overlay for 5 seconds (`bustAt` timestamp), then auto-advances on next poll
+- **bust**: Shows BUST! overlay for 10 seconds (`bustAt` timestamp), then auto-advances on next poll
 
 ### 3D Dice Animation
 
@@ -100,7 +101,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
 ### Type System (`lib/types.ts`)
 
-- `GameState` - Complete game state including `bustAt` timestamp for bust delays
+- `GameState` - Complete game state including `bustAt` timestamp and `lastRollerIndex` for turn tracking
 - `Player` - Score, banking state, `pointsEarnedThisRound`
 - `RollEffect` - effectType: 'add' | 'add70' | 'doubleBank' | 'bust' | 'none'
 - `RollHistoryEntry`, `RoundHistoryEntry` - History tracking
@@ -131,6 +132,24 @@ Database schema in `supabase/schema.sql`.
 
 **Player Order Consistency:** In `gameStore.joinRoom()`, players are sorted by playerId before initializing game to handle JSON serialization not preserving insertion order.
 
-**Animation Timing:** Dice animation is 3 seconds total. After animation, `setGameState(data.gameState)` updates the full UI (bank, history).
+**Animation Timing:** Dice animation is 2.5 seconds (`ROLL_DURATION` in ActionPanel). After 3-second timeout, `setGameState(data.gameState)` updates the full UI.
 
-**Bust Phase:** When bust occurs, game enters 'bust' phase for 5 seconds. `checkBustTransition()` in the GET endpoint auto-advances to new round after delay.
+**Bust Phase:** When bust occurs, game enters 'bust' phase for 10 seconds. `checkBustTransition()` in the GET endpoint auto-advances to new round after delay.
+
+**Turn Order on New Round:** `lastRollerIndex` is saved before clearing `isCurrentRoller` (in `endRoundBust` and `applyBank`). `startNewRound()` uses this to correctly advance to the next player.
+
+### Sound Effects
+
+`lib/sounds.ts` manages audio playback with `soundManager` singleton:
+- **roll** - Dice shaking sound
+- **bank** - Cash register cha-ching
+- **bust** - Negative fail sound
+- **doubles** - Bonus win sound
+- **lucky7** - Jackpot sound for 7 in first 3 rolls
+- **danger** - Warning alert when entering roll #4 (risky phase)
+
+`hooks/useSounds.ts` provides React hook. Sounds are played in page.tsx handlers and also triggered for other players' rolls via polling.
+
+### Floating Effect Messages
+
+`BankPanel` displays roll effects ("+8 to bank", "BUST!", etc.) as floating text using CSS animation. Uses React `key` prop with unique `rollKey` to force remount and restart animation on each new roll.
