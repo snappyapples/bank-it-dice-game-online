@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface CreateGameModalProps {
@@ -26,6 +26,16 @@ export default function CreateGameModal({ isOpen, onClose }: CreateGameModalProp
   const [rounds, setRounds] = useState(5)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Load saved nickname from localStorage
+  useEffect(() => {
+    if (isOpen) {
+      const savedNickname = localStorage.getItem('nickname')
+      if (savedNickname) {
+        setNickname(savedNickname)
+      }
+    }
+  }, [isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
