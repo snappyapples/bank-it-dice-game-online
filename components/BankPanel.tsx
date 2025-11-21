@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
 import { GameState, RollEffect } from '@/lib/types'
 
 interface BankPanelProps {
@@ -11,23 +10,9 @@ interface BankPanelProps {
 
 export default function BankPanel({ gameState, lastRoll, showEffect = false }: BankPanelProps) {
   const { bankValue, roundNumber, totalRounds, rollCountThisRound } = gameState
-  const [visibleEffect, setVisibleEffect] = useState<RollEffect | null>(null)
-  const lastRollKeyRef = useRef<string | null>(null)
 
-  // Create a unique key for each roll
+  // Create a unique key for each roll - used to remount the animation element
   const rollKey = lastRoll ? `${roundNumber}-${rollCountThisRound}-${lastRoll.die1}-${lastRoll.die2}` : null
-
-  // Show effect when a NEW roll is detected
-  useEffect(() => {
-    if (showEffect && lastRoll && rollKey && rollKey !== lastRollKeyRef.current) {
-      // New roll detected - show effect
-      lastRollKeyRef.current = rollKey
-      setVisibleEffect(lastRoll)
-
-      const timer = setTimeout(() => setVisibleEffect(null), 2500)
-      return () => clearTimeout(timer)
-    }
-  }, [showEffect, lastRoll, rollKey])
 
   const getEffectColor = (effectType?: string) => {
     if (!effectType) return 'text-gray-400'
@@ -63,11 +48,13 @@ export default function BankPanel({ gameState, lastRoll, showEffect = false }: B
       {/* Round Info */}
       <div className="relative grid grid-cols-2 gap-4 pt-6 border-t border-white/10">
         {/* Floating Effect Message - centered between Round and Roll */}
-        {visibleEffect && (
+        {/* Using key={rollKey} forces React to remount on each new roll, restarting animation */}
+        {showEffect && lastRoll && (
           <div
-            className={`absolute left-1/2 -translate-x-1/2 -top-3 text-lg font-bold ${getEffectColor(visibleEffect.effectType)} animate-fade-in-up pointer-events-none whitespace-nowrap bg-[#141414] px-3`}
+            key={rollKey}
+            className={`absolute left-1/2 -translate-x-1/2 -top-3 text-lg font-bold ${getEffectColor(lastRoll.effectType)} animate-fade-in-up pointer-events-none whitespace-nowrap bg-[#141414] px-3`}
           >
-            {visibleEffect.effectText}
+            {lastRoll.effectText}
           </div>
         )}
         <div className="text-center">
