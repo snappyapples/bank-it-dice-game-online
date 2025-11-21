@@ -332,7 +332,9 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             <div className="text-6xl mb-4">💥</div>
             <div className="text-sm text-gray-400 uppercase tracking-wider mb-2">Round {gameState.roundNumber}</div>
             <div className="text-5xl font-bold text-bust-red mb-2">BUST!</div>
-            <div className="text-xl text-gray-300">Someone rolled a 7 - Bank emptied!</div>
+            <div className="text-xl text-gray-300">
+              <span className="font-bold text-bust-red">{gameState.history[gameState.history.length - 1]?.playerNickname || 'Someone'}</span> rolled a 7 - Bank emptied!
+            </div>
             <div className="text-gray-400 mt-4 text-sm">New round starting soon...</div>
           </div>
         )}
