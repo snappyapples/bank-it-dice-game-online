@@ -212,7 +212,7 @@ export function applyBank(state: GameState, playerId: string): GameState {
       : p
   )
 
-  const newState: GameState = {
+  let newState: GameState = {
     ...state,
     players: updatedPlayers,
   }
@@ -220,6 +220,8 @@ export function applyBank(state: GameState, playerId: string): GameState {
   // Check if all players have banked
   const allBanked = updatedPlayers.every((p) => p.hasBankedThisRound)
   if (allBanked) {
+    // Save the last roller index before starting new round
+    newState = { ...newState, lastRollerIndex: currentRollerIndex }
     return startNewRound(newState)
   }
 
@@ -275,6 +277,9 @@ export function advanceTurnFrom(state: GameState, fromIndex: number): GameState 
  * Sets phase to 'bust' and records timestamp - new round starts after delay
  */
 function endRoundBust(state: GameState): GameState {
+  // Capture the current roller index BEFORE clearing
+  const lastRollerIndex = state.players.findIndex((p) => p.isCurrentRoller)
+
   // All players who haven't banked get nothing
   const updatedPlayers = state.players.map((p) => ({
     ...p,
@@ -288,6 +293,7 @@ function endRoundBust(state: GameState): GameState {
     players: updatedPlayers,
     phase: 'bust',
     bustAt: Date.now(),
+    lastRollerIndex,
   }
 }
 
@@ -341,9 +347,11 @@ export function startNewRound(state: GameState): GameState {
     }
   }
 
-  // Find the last roller from the previous round and advance to next player
-  const lastRollerIndex = state.players.findIndex(p => p.isCurrentRoller)
-  const nextRollerIndex = (lastRollerIndex + 1) % state.players.length
+  // Use saved lastRollerIndex, or find current roller, or default to 0
+  const lastRollerIndex = state.lastRollerIndex ?? state.players.findIndex(p => p.isCurrentRoller)
+  const nextRollerIndex = lastRollerIndex >= 0
+    ? (lastRollerIndex + 1) % state.players.length
+    : 0
 
   // Reset for new round with next player as roller
   const updatedPlayers = state.players.map((p, index) => ({
@@ -364,6 +372,8 @@ export function startNewRound(state: GameState): GameState {
     history: [],
     roundHistory: [...state.roundHistory, roundHistoryEntry],
     phase: 'inRound',
+    lastRollerIndex: undefined, // Clear for new round
+    bustAt: undefined,
   }
 }
 

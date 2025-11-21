@@ -54,4 +54,5 @@ export interface GameState {
   roundHistory: RoundHistoryEntry[]
   phase?: GamePhase
   bustAt?: number // Timestamp when bust occurred (for delay before new round)
+  lastRollerIndex?: number // Track who was rolling when round ended (for next round start)
 }
