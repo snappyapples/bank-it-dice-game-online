@@ -5,7 +5,7 @@ interface SimpleDiceProps {
 export default function SimpleDice({ value }: SimpleDiceProps) {
   // Render dice face with dots
   const renderDots = () => {
-    const dots = []
+    const dots: JSX.Element[] = []
 
     // Dot positions based on dice value
     const positions: { [key: number]: string[] } = {
