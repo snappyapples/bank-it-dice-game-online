@@ -11,6 +11,7 @@ interface ActionPanelProps {
   hasBanked: boolean
   lastRoll?: RollEffect
   isRolling?: boolean
+  isBustPhase?: boolean
   onRoll: () => void
   onBank: () => void
 }
@@ -20,6 +21,7 @@ export default function ActionPanel({
   hasBanked,
   lastRoll,
   isRolling = false,
+  isBustPhase = false,
   onRoll,
   onBank,
 }: ActionPanelProps) {
@@ -105,11 +107,11 @@ export default function ActionPanel({
       <div className="space-y-3 mt-6">
         <button
           onClick={onRoll}
-          disabled={!isCurrentPlayer || hasBanked || isRolling}
+          disabled={!isCurrentPlayer || hasBanked || isRolling || isBustPhase}
           className={`
             w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
             ${
-              isCurrentPlayer && !hasBanked && !isRolling
+              isCurrentPlayer && !hasBanked && !isRolling && !isBustPhase
                 ? 'bg-brand-lime hover:bg-brand-lime/90 hover:scale-105 text-black shadow-lg shadow-brand-lime/20 cursor-pointer'
                 : 'bg-gray-800 text-gray-600 cursor-not-allowed'
             }
@@ -120,11 +122,11 @@ export default function ActionPanel({
 
         <button
           onClick={onBank}
-          disabled={hasBanked || isRolling}
+          disabled={hasBanked || isRolling || isBustPhase}
           className={`
             w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
             ${
-              !hasBanked && !isRolling
+              !hasBanked && !isRolling && !isBustPhase
                 ? 'bg-brand-teal hover:bg-brand-teal/90 hover:scale-105 text-white shadow-lg shadow-brand-teal/20 cursor-pointer'
                 : 'bg-gray-800 text-gray-600 cursor-not-allowed'
             }
@@ -136,9 +138,10 @@ export default function ActionPanel({
 
       {/* Status Text */}
       <div className="mt-4 text-center text-sm text-gray-400">
-        {hasBanked && <p>You have banked this round</p>}
-        {!isCurrentPlayer && !hasBanked && <p>Waiting for other player...</p>}
-        {isCurrentPlayer && !hasBanked && !isRolling && <p className="text-brand-lime">Your turn to roll!</p>}
+        {isBustPhase && <p className="text-bust-red">Round ended - new round starting soon...</p>}
+        {!isBustPhase && hasBanked && <p>You have banked this round</p>}
+        {!isBustPhase && !isCurrentPlayer && !hasBanked && <p>Waiting for other player...</p>}
+        {!isBustPhase && isCurrentPlayer && !hasBanked && !isRolling && <p className="text-brand-lime">Your turn to roll!</p>}
       </div>
     </div>
   )

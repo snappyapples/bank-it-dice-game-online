@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { gameStore } from '@/lib/gameStore'
+import { checkBustTransition } from '@/lib/gameLogic'
 
 export async function GET(
   request: NextRequest,
@@ -17,9 +18,19 @@ export async function GET(
       )
     }
 
+    // Check if we need to auto-advance from bust phase (5 second delay)
+    let gameState = room.gameState
+    const newGameState = checkBustTransition(gameState, 5000)
+
+    // If state changed (bust delay passed), update the database
+    if (newGameState !== gameState) {
+      await gameStore.updateGameState(roomId, newGameState)
+      gameState = newGameState
+    }
+
     return NextResponse.json({
       roomId: room.id,
-      gameState: room.gameState,
+      gameState: gameState,
       started: room.started,
       playerCount: room.players.size,
       hostPlayerId: room.hostPlayerId,

@@ -291,7 +291,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
   // Determine if we're in the risky phase (roll 4+)
   const isRiskyPhase = gameState.rollCountThisRound >= 3
-  const backgroundClass = isRiskyPhase
+  const isBustPhase = gameState.phase === 'bust'
+  const backgroundClass = isBustPhase
+    ? 'bg-gradient-to-b from-red-900/50 via-red-950/30 to-background-dark'
+    : isRiskyPhase
     ? 'bg-gradient-to-b from-red-950/30 via-background-dark to-background-dark'
     : 'bg-background-dark'
 
@@ -322,6 +325,17 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             <div className="text-2xl text-gray-300">Final Score: {maxScore}</div>
           </div>
         )}
+
+        {/* Bust Announcement */}
+        {isBustPhase && (
+          <div className="mb-6 bg-gradient-to-r from-red-900/30 via-red-800/20 to-red-900/30 border-2 border-bust-red rounded-lg shadow-2xl p-8 text-center backdrop-blur-sm animate-pulse">
+            <div className="text-6xl mb-4">💥</div>
+            <div className="text-sm text-gray-400 uppercase tracking-wider mb-2">Round {gameState.roundNumber}</div>
+            <div className="text-5xl font-bold text-bust-red mb-2">BUST!</div>
+            <div className="text-xl text-gray-300">Someone rolled a 7 - Bank emptied!</div>
+            <div className="text-gray-400 mt-4 text-sm">New round starting soon...</div>
+          </div>
+        )}
         {/* Top Section - Bank Info */}
         <div className="mb-6">
           <BankPanel gameState={gameState} />
@@ -336,6 +350,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               hasBanked={hasBanked}
               lastRoll={pendingGameState?.lastRoll ?? gameState.lastRoll}
               isRolling={isRolling}
+              isBustPhase={isBustPhase}
               onRoll={handleRoll}
               onBank={handleBank}
             />

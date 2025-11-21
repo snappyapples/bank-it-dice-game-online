@@ -41,7 +41,7 @@ export interface RoundHistoryEntry {
   topPoints: number
 }
 
-export type GamePhase = 'lobby' | 'inRound' | 'betweenRounds' | 'finished'
+export type GamePhase = 'lobby' | 'inRound' | 'betweenRounds' | 'bust' | 'finished'
 
 export interface GameState {
   players: Player[]
@@ -53,4 +53,5 @@ export interface GameState {
   history: RollHistoryEntry[]
   roundHistory: RoundHistoryEntry[]
   phase?: GamePhase
+  bustAt?: number // Timestamp when bust occurred (for delay before new round)
 }

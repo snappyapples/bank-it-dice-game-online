@@ -262,6 +262,7 @@ export function advanceTurn(state: GameState): GameState {
 
 /**
  * End the round due to a bust (no one gets points)
+ * Sets phase to 'bust' and records timestamp - new round starts after delay
  */
 function endRoundBust(state: GameState): GameState {
   // All players who haven't banked get nothing
@@ -271,13 +272,32 @@ function endRoundBust(state: GameState): GameState {
     isCurrentRoller: false,
   }))
 
-  const newState: GameState = {
+  // Set bust phase with timestamp - don't immediately start new round
+  return {
     ...state,
     players: updatedPlayers,
+    phase: 'bust',
+    bustAt: Date.now(),
+  }
+}
+
+/**
+ * Check if bust delay has passed and transition to new round if needed
+ * Call this when getting game state to auto-advance from bust
+ */
+export function checkBustTransition(state: GameState, delayMs: number = 5000): GameState {
+  if (state.phase !== 'bust' || !state.bustAt) {
+    return state
   }
 
-  // Start new round after a brief delay (handled by UI)
-  return startNewRound(newState)
+  const elapsed = Date.now() - state.bustAt
+  if (elapsed >= delayMs) {
+    // Delay has passed, start new round
+    return startNewRound(state)
+  }
+
+  // Still in bust phase
+  return state
 }
 
 /**
