@@ -127,12 +127,19 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const handleRoll = async () => {
     if (isRolling) return
 
+    // Get fresh playerId from localStorage in case it changed
+    const currentPlayerId = localStorage.getItem('playerId') || ''
+    if (!currentPlayerId) {
+      setError('Player ID not found. Please refresh the page.')
+      return
+    }
+
     try {
       // Call API first to get dice values BEFORE starting animation
       const response = await fetch(`/api/rooms/${roomId}/roll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId }),
+        body: JSON.stringify({ playerId: currentPlayerId }),
       })
 
       if (!response.ok) {
@@ -165,11 +172,18 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   }
 
   const handleBank = async () => {
+    // Get fresh playerId from localStorage
+    const currentPlayerId = localStorage.getItem('playerId') || ''
+    if (!currentPlayerId) {
+      setError('Player ID not found. Please refresh the page.')
+      return
+    }
+
     try {
       const response = await fetch(`/api/rooms/${roomId}/bank`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId }),
+        body: JSON.stringify({ playerId: currentPlayerId }),
       })
 
       if (!response.ok) {
