@@ -22,14 +22,28 @@ export default function PlayersPanel({ players }: PlayersPanelProps) {
   }
 
   const getCardClasses = (player: Player) => {
-    if (isLeader(player)) {
-      // Leader gets gold styling (takes priority over current roller)
-      return 'bg-yellow-500/10 border-yellow-500 shadow-lg shadow-yellow-500/20'
+    const isCurrentLeader = isLeader(player)
+    const isRoller = player.isCurrentRoller
+
+    // Build classes - leader border, but roller gets the background shading
+    let classes = 'bg-black/30 border-white/10'
+
+    if (isRoller) {
+      classes = 'bg-brand-lime/10 border-brand-lime shadow-lg shadow-brand-lime/20'
     }
-    if (player.isCurrentRoller) {
-      return 'bg-brand-lime/10 border-brand-lime shadow-lg shadow-brand-lime/20'
+
+    // Leader gets gold border (overrides other borders, but not background)
+    if (isCurrentLeader) {
+      if (isRoller) {
+        // Both leader and roller - keep green bg, gold border
+        classes = 'bg-brand-lime/10 border-yellow-500 shadow-lg shadow-yellow-500/20'
+      } else {
+        // Just leader - no bg shading, gold border
+        classes = 'bg-black/30 border-yellow-500 shadow-lg shadow-yellow-500/20'
+      }
     }
-    return 'bg-black/30 border-white/10'
+
+    return classes
   }
 
   return (
