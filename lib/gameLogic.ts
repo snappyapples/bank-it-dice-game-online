@@ -196,6 +196,8 @@ export function applyBank(state: GameState, playerId: string): GameState {
   }
 
   const wasCurrentRoller = player.isCurrentRoller
+  // Capture the current roller's index BEFORE modifying state
+  const currentRollerIndex = state.players.findIndex((p) => p.isCurrentRoller)
 
   // Add bank value to player's score
   const updatedPlayers = state.players.map((p) =>
@@ -223,7 +225,7 @@ export function applyBank(state: GameState, playerId: string): GameState {
 
   // Only advance turn if the banking player was the current roller
   if (wasCurrentRoller) {
-    return advanceTurn(newState)
+    return advanceTurnFrom(newState, currentRollerIndex)
   }
 
   return newState
@@ -233,14 +235,22 @@ export function applyBank(state: GameState, playerId: string): GameState {
  * Advance to the next player who hasn't banked
  */
 export function advanceTurn(state: GameState): GameState {
+  const currentRollerIndex = state.players.findIndex((p) => p.isCurrentRoller)
+  return advanceTurnFrom(state, currentRollerIndex)
+}
+
+/**
+ * Advance turn starting from a specific player index
+ * Used when the current roller may have already been cleared (e.g., after banking)
+ */
+export function advanceTurnFrom(state: GameState, fromIndex: number): GameState {
   const activePlayers = state.players.filter((p) => !p.hasBankedThisRound)
 
   if (activePlayers.length === 0) {
     return startNewRound(state)
   }
 
-  const currentRollerIndex = state.players.findIndex((p) => p.isCurrentRoller)
-  let nextRollerIndex = (currentRollerIndex + 1) % state.players.length
+  let nextRollerIndex = (fromIndex + 1) % state.players.length
 
   // Find next player who hasn't banked
   let attempts = 0
