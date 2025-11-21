@@ -119,13 +119,13 @@ export default function ActionPanel({
         </button>
       </div>
 
-      {/* Status Text */}
-      <div className="mt-4 text-center text-sm text-gray-400">
-        {isBustPhase && <p className="text-bust-red">Round ended - new round starting soon...</p>}
-        {!isBustPhase && hasBanked && <p>You have banked this round</p>}
-        {!isBustPhase && !isCurrentPlayer && !hasBanked && <p>Waiting for other player...</p>}
-        {!isBustPhase && isCurrentPlayer && !hasBanked && !isRolling && <p className="text-brand-lime">Your turn to roll!</p>}
-      </div>
+      {/* Status Text - only show important states */}
+      {(isBustPhase || hasBanked) && (
+        <div className="mt-4 text-center text-sm text-gray-400">
+          {isBustPhase && <p className="text-bust-red">Round ended - new round starting soon...</p>}
+          {!isBustPhase && hasBanked && <p>You have banked this round</p>}
+        </div>
+      )}
     </div>
   )
 }
