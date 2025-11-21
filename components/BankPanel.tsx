@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { GameState, RollEffect } from '@/lib/types'
 
 interface BankPanelProps {
@@ -12,20 +12,22 @@ interface BankPanelProps {
 export default function BankPanel({ gameState, lastRoll, showEffect = false }: BankPanelProps) {
   const { bankValue, roundNumber, totalRounds, rollCountThisRound } = gameState
   const [visibleEffect, setVisibleEffect] = useState<RollEffect | null>(null)
-  const [effectKey, setEffectKey] = useState<string | null>(null)
+  const lastRollKeyRef = useRef<string | null>(null)
 
-  // Create a unique key for each roll to trigger the effect
+  // Create a unique key for each roll
   const rollKey = lastRoll ? `${roundNumber}-${rollCountThisRound}-${lastRoll.die1}-${lastRoll.die2}` : null
 
-  // Show effect briefly then fade out - trigger on each new roll
+  // Show effect when a NEW roll is detected
   useEffect(() => {
-    if (showEffect && lastRoll && rollKey && rollKey !== effectKey) {
-      setEffectKey(rollKey)
+    if (showEffect && lastRoll && rollKey && rollKey !== lastRollKeyRef.current) {
+      // New roll detected - show effect
+      lastRollKeyRef.current = rollKey
       setVisibleEffect(lastRoll)
+
       const timer = setTimeout(() => setVisibleEffect(null), 2500)
       return () => clearTimeout(timer)
     }
-  }, [showEffect, lastRoll, rollKey, effectKey])
+  }, [showEffect, lastRoll, rollKey])
 
   const getEffectColor = (effectType?: string) => {
     if (!effectType) return 'text-gray-400'
