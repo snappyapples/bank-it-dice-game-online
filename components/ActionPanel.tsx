@@ -28,17 +28,14 @@ export default function ActionPanel({
   onBank,
 }: ActionPanelProps) {
   const [isBouncing, setIsBouncing] = useState(false)
-  const [showResult, setShowResult] = useState(true)
 
   // Handle bounce animation when roll completes
   useEffect(() => {
     if (isRolling) {
-      setShowResult(false)
       setIsBouncing(false)
     } else if (lastRoll) {
       // Small delay to sync with dice animation finishing
       const timer = setTimeout(() => {
-        setShowResult(true)
         setIsBouncing(true)
         // Stop bouncing after a few bounces
         setTimeout(() => setIsBouncing(false), 1500)
@@ -46,19 +43,6 @@ export default function ActionPanel({
       return () => clearTimeout(timer)
     }
   }, [isRolling, lastRoll])
-
-  const getEffectColor = (effectType?: string) => {
-    if (!effectType) return 'text-gray-400'
-    switch (effectType) {
-      case 'bust':
-        return 'text-bust-red'
-      case 'doubleBank':
-      case 'add70':
-        return 'text-yellow-400'
-      default:
-        return 'text-brand-lime'
-    }
-  }
 
   const die1Value = lastRoll?.die1 ?? 1
   const die2Value = lastRoll?.die2 ?? 1
@@ -96,13 +80,6 @@ export default function ActionPanel({
             {isRolling ? '?' : total}
           </div>
         </div>
-
-        {/* Effect Text */}
-        {lastRoll && showResult && (
-          <div className={`text-center text-lg font-semibold ${getEffectColor(lastRoll.effectType)}`}>
-            {lastRoll.effectText}
-          </div>
-        )}
       </div>
 
       {/* Action Buttons */}

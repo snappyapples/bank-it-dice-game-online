@@ -370,7 +370,11 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         )}
         {/* Top Section - Bank Info */}
         <div className="mb-6">
-          <BankPanel gameState={gameState} />
+          <BankPanel
+            gameState={gameState}
+            lastRoll={gameState.lastRoll}
+            showEffect={!isRolling && !!gameState.lastRoll}
+          />
         </div>
 
         {/* Middle Section - Actions and Players */}

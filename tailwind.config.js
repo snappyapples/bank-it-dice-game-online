@@ -29,6 +29,17 @@ module.exports = {
         xl: '3rem',
         full: '9999px',
       },
+      keyframes: {
+        'fade-in-up': {
+          '0%': { opacity: '0', transform: 'translateX(-50%) translateY(10px)' },
+          '20%': { opacity: '1', transform: 'translateX(-50%) translateY(0)' },
+          '80%': { opacity: '1', transform: 'translateX(-50%) translateY(0)' },
+          '100%': { opacity: '0', transform: 'translateX(-50%) translateY(-10px)' },
+        },
+      },
+      animation: {
+        'fade-in-up': 'fade-in-up 2.5s ease-out forwards',
+      },
     },
   },
   plugins: [],
