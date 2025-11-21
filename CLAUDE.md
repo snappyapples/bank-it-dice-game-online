@@ -4,211 +4,133 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Bank It is an online multiplayer dice game built with Next.js 16, TypeScript, and Tailwind CSS. Players roll two dice each turn, accumulating points in a shared "bank" that they can cash in before someone rolls a 7 and busts.
+Bank It is an online multiplayer dice game built with Next.js 16, TypeScript, Tailwind CSS, and Supabase. Players roll two dice each turn, accumulating points in a shared "bank" that they can cash in before someone rolls a 7 and busts.
 
 **Tech Stack:**
 - Next.js 16.0.3 (App Router with Turbopack)
 - React 19.2.0
 - TypeScript 5.9.3
 - Tailwind CSS 3.4.18
-
-**Current Status:** Local multiplayer with in-memory game state and polling-based synchronization
+- Supabase (PostgreSQL for persistence)
+- Vercel (deployment)
 
 ## Development Commands
 
 ```bash
-# Start development server (uses Turbopack)
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Run linting
-npm lint
+npm run dev      # Start development server (Turbopack, port 3000)
+npm run build    # Build for production
+npm start        # Start production server
+npm run lint     # Run linting
 ```
 
-**Note:** Development server runs on port 3000 by default. If that port is in use, Next.js will automatically select the next available port.
+**Clearing Turbopack Cache:** `rm -rf .next && npm run dev`
 
 ## Architecture
 
 ### Game State Management
 
-The game uses **pure functional state management** with immutable updates. All game logic is centralized in `lib/gameLogic.ts` and operates on a single `GameState` object.
+Pure functional state management with immutable updates. All game logic in `lib/gameLogic.ts` operates on a single `GameState` object.
 
-**Key Principle:** Game state flows unidirectionally:
 ```
-User Action → Handler Function → Pure Game Logic → New State → React Re-render
+User Action → API Route → Pure Game Logic → New State → Supabase → Poll → React Re-render
 ```
 
-**Game Logic Functions** (`lib/gameLogic.ts`):
-- `initGame()` - Initialize new game with players and rounds
-- `applyRoll()` - Process dice roll and update bank value
-- `applyBank()` - Handle player banking their points
+**Core Functions** (`lib/gameLogic.ts`):
+- `initGame()` - Initialize new game with players
+- `applyRoll()` - Process dice roll, apply rules based on roll count
+- `applyBank()` - Handle player banking (only advances turn if banker was current roller)
 - `advanceTurn()` - Move to next active player
-- All functions are pure - they take state, return new state, never mutate
+- `checkBustTransition()` - Auto-advance from bust phase after 5-second delay
 
-### Game Rules Implementation
-
-The game has **two distinct rule sets** that switch based on roll count:
+### Game Rules
 
 **First 3 Rolls** (`applySpecialRules()`):
-- All dice rolls add their face value (including doubles)
-- **Exception:** Rolling a 7 adds 70 to the bank (not just 7)
+- All rolls add face value
+- Rolling 7 adds **70 points** (bonus)
 
-**After Roll 3** (`applyNormalRules()`):
-- Rolling a 7 **empties the bank** (bust - all non-banked players get nothing)
-- Rolling **doubles multiplies the entire bank by 2**
-- All other rolls add their face value
-
-The rule switching happens in `applyRoll()` based on `rollCountThisRound`:
-```typescript
-if (newRollCount <= 3) {
-  const result = applySpecialRules(state, die1, die2)
-} else {
-  const result = applyNormalRules(state, die1, die2)
-}
-```
-
-### Next.js 16 Patterns
-
-This project uses **Next.js 16 App Router** conventions:
-
-**Async Params:** Route params are Promises that must be unwrapped with `React.use()`:
-```typescript
-export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
-  const { roomId } = use(params)
-  // Now use roomId...
-}
-```
-
-**Route Structure:**
-- `app/page.tsx` - Home page with Create/Join game modals
-- `app/room/[roomId]/page.tsx` - Game room (dynamic route)
-- `app/layout.tsx` - Root layout with header and global styles
+**Roll 4+** (`applyNormalRules()`):
+- Rolling 7 = **BUST** (bank empties, enters 'bust' phase for 5 seconds)
+- Rolling doubles = **DOUBLES** entire bank
+- Other rolls add face value
 
 ### Multiplayer Architecture
 
-**Server-Side State Management** (`lib/gameStore.ts`):
-- Singleton GameStore using `globalThis` for hot-reload persistence
-- In-memory Map storing all active rooms
-- Each room contains: `gameState`, `players`, `hostPlayerId`, `started` flag
-- Room IDs are 6-character uppercase codes (e.g., "LZ11Z4")
+**Database** (`lib/supabase.ts`, `lib/gameStore.ts`):
+- Supabase PostgreSQL stores all room state
+- `gameStore` singleton handles all database operations
+- Player-to-gameId mapping stored in `game_state._players` JSON field
+- Players sorted by playerId on game init to ensure consistent order (JSON doesn't preserve Map order)
 
 **API Routes** (`app/api/rooms/`):
-- `POST /api/rooms` - Create new room with host player
-- `POST /api/rooms/[roomId]/join` - Join existing room
-- `GET /api/rooms/[roomId]` - Get current room state
-- `POST /api/rooms/[roomId]/start` - Start game (host only)
-- `POST /api/rooms/[roomId]/roll` - Roll dice for current player
-- `POST /api/rooms/[roomId]/bank` - Bank points for player
+- `POST /api/rooms` - Create room
+- `POST /api/rooms/[roomId]/join` - Join room
+- `GET /api/rooms/[roomId]` - Get state (auto-transitions from bust after 5s)
+- `POST /api/rooms/[roomId]/start` - Start game (host only, min 2 players)
+- `POST /api/rooms/[roomId]/roll` - Roll dice
+- `POST /api/rooms/[roomId]/bank` - Bank points
 
-**Client-Side Synchronization:**
-- Polling every 2 seconds via `GET /api/rooms/[roomId]`
-- Player identity stored in localStorage (playerId + nickname)
-- Optimistic UI updates for actions, server as single source of truth
+**Client Synchronization** (`app/room/[roomId]/page.tsx`):
+- Polls every 2 seconds
+- Player identity in localStorage (`playerId`, `nickname`)
+- **Important:** Always read fresh `playerId` from localStorage for API calls (state can be stale)
+- Uses `pendingGameState` pattern to delay UI updates until dice animation completes
 
-**Room Lifecycle:**
-1. Host creates room → receives roomId
-2. Players join via roomId → added to room's player list
-3. Host starts game → all players transition from lobby to game
-4. Game progresses via roll/bank actions
-5. Round history tracked across all rounds
-6. Game ends when `phase === 'finished'`
+### Game Phases
 
-### Component Organization
+`GamePhase = 'lobby' | 'inRound' | 'betweenRounds' | 'bust' | 'finished'`
 
-**Panel Components** - Display game information (read-only):
-- `BankPanel` - Shows current bank value, round number, risk indicators
-- `PlayersPanel` - Lists all players with scores and status badges
-- `RollHistoryPanel` - Shows table of all rolls this round
-- `RoundHistoryPanel` - Personalized view of player's performance per round
+- **bust**: Shows BUST! overlay for 5 seconds (`bustAt` timestamp), then auto-advances on next poll
 
-**Interactive Components** - Handle user actions:
-- `ActionPanel` - Contains Roll and Bank buttons with game logic
-- `RollingDice` - Displays dice with spinner overlay during 5-second roll animation
-- `CreateGameModal` / `JoinGameModal` - Home page modals for room management
-- `HowToPlayModal` - Game instructions modal
-- `Header` - Navigation with "How to Play" link
+### 3D Dice Animation
 
-**Component Props Pattern:** Components receive `gameState` or derived props, never modify state directly. All state changes flow through handler functions in the page component.
+`ThreeDDice` component uses Web Animations API:
+- CSS 3D transforms with `perspective`, `transform-style: preserve-3d`
+- Animation duration: 2.5 seconds
+- `isRolling` state triggers animation; dice values from `pendingGameState.lastRoll`
+- For non-rolling players, new rolls detected via polling trigger same animation
 
-### Styling System
+### Next.js 16 Patterns
 
-**Tailwind Custom Colors** (defined in `tailwind.config.js`):
-- `brand-purple`, `brand-teal`, `brand-lime` - Main brand colors
-- `bank-green`, `bank-dark` - Bank value display
+**Async Params:** Route params are Promises:
+```typescript
+export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
+  const { roomId } = use(params)
+}
+```
+
+### Type System (`lib/types.ts`)
+
+- `GameState` - Complete game state including `bustAt` timestamp for bust delays
+- `Player` - Score, banking state, `pointsEarnedThisRound`
+- `RollEffect` - effectType: 'add' | 'add70' | 'doubleBank' | 'bust' | 'none'
+- `RollHistoryEntry`, `RoundHistoryEntry` - History tracking
+
+### Styling
+
+**Custom Colors** (`tailwind.config.js`):
+- `brand-purple`, `brand-teal`, `brand-lime` - Brand colors
+- `bank-green`, `bank-dark` - Bank display
 - `bust-red` - Bust/error states
 - `background-dark` - Main background (#0a0a0a)
 
-**Global Styles** (`app/globals.css`):
-- Poppins font family imported from Google Fonts
-- CSS custom properties for theming
-- Form input number styles (remove spinners)
+**Risk Indicators:** When `rollCountThisRound >= 3`, background transitions to red gradient
 
-**Design Tokens:**
-- Dark theme with gradient backgrounds
-- Rounded corners (1rem default, 1.5rem lg)
-- Glass-morphism effects (backdrop-blur-sm, border-white/10)
+## Environment Setup
 
-### Type System
-
-**Core Types** (`lib/types.ts`):
-- `GameState` - Single source of truth for entire game
-- `Player` - Individual player with score, status, banking state, points earned per round
-- `RollEffect` - Describes what happened on a roll (bust, double bank, etc.)
-- `RollHistoryEntry` - Record for roll-by-roll history with bank amounts
-- `RoundHistoryEntry` - Round summary with player results and winners
-- `GamePhase` - Lifecycle: 'lobby' | 'inRound' | 'betweenRounds' | 'finished'
-
-**Type Safety:** All game logic functions are strictly typed. State transitions are type-checked at compile time.
-
-## Common Patterns
-
-### Clearing Turbopack Cache
-
-When experiencing build issues or stale state:
-```bash
-rm -rf .next && npm run dev
+Requires `.env.local` with Supabase credentials:
+```
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### State Update Pattern
+Database schema in `supabase/schema.sql`.
 
-Always use functional setState when the new state depends on previous state:
-```typescript
-setGameState(prevState => applyRoll(prevState))
-```
+## Key Implementation Details
 
-Never directly mutate state. Game logic functions create new objects.
+**Banking Turn Logic:** `applyBank()` only calls `advanceTurn()` if the banking player was the current roller. This prevents skipping the current roller's turn when another player banks.
 
-### Animation Timing
+**Player Order Consistency:** In `gameStore.joinRoom()`, players are sorted by playerId before initializing game to handle JSON serialization not preserving insertion order.
 
-Dice rolling uses a 5-second delay to match animation duration:
-```typescript
-setTimeout(() => {
-  setGameState(prevState => applyRoll(prevState))
-  setIsRolling(false)
-}, 5000)
-```
+**Animation Timing:** Dice animation is 3 seconds total. After animation, `setGameState(data.gameState)` updates the full UI (bank, history).
 
-### Visual Risk Indicators
-
-When `rollCountThisRound >= 3`, the UI signals increased risk:
-- Background: Changes to red gradient (`bg-gradient-to-b from-red-950/30`)
-- Bank panel border: Changes to red glow (`border-red-500/50`)
-- Roll phase text: Changes to red with warning emoji
-- All transitions use `duration-1000` for smooth effects
-
-### Round Transition Bug Prevention
-
-Reset `isRolling` state when round changes to prevent auto-rolling:
-```typescript
-useEffect(() => {
-  if (gameState && gameState.roundNumber !== currentRound) {
-    setIsRolling(false)
-    setCurrentRound(gameState.roundNumber)
-  }
-}, [gameState, currentRound])
-```
+**Bust Phase:** When bust occurs, game enters 'bust' phase for 5 seconds. `checkBustTransition()` in the GET endpoint auto-advances to new round after delay.

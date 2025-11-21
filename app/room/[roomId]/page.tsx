@@ -362,12 +362,22 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             {currentPlayer && (
               <div className="bg-[#141414] border border-white/10 rounded-lg shadow-xl p-4 backdrop-blur-sm text-center">
                 <div className="text-sm text-gray-400 uppercase tracking-wider mb-1">Status:</div>
-                <div className="text-xl font-bold text-brand-lime">
+                <div className="text-xl font-bold">
                   {(() => {
                     const maxScore = Math.max(...gameState.players.map(p => p.score))
-                    const isWinning = currentPlayer.score === maxScore
+                    const leadersCount = gameState.players.filter(p => p.score === maxScore).length
+                    const isAtMax = currentPlayer.score === maxScore
                     const pointsBehind = maxScore - currentPlayer.score
-                    return isWinning ? 'You are winning' : `${pointsBehind} points behind winner`
+
+                    if (maxScore === 0) {
+                      return <span className="text-gray-400">Game just started - roll to build the bank!</span>
+                    } else if (isAtMax && leadersCount > 1) {
+                      return <span className="text-yellow-400">Tied for first place</span>
+                    } else if (isAtMax) {
+                      return <span className="text-brand-lime">You are winning!</span>
+                    } else {
+                      return <span className="text-orange-400">{pointsBehind} points behind leader</span>
+                    }
                   })()}
                 </div>
               </div>
