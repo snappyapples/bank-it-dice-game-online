@@ -7,6 +7,8 @@ import ActionPanel from '@/components/ActionPanel'
 import RollHistoryPanel from '@/components/RollHistoryPanel'
 import RoundHistoryPanel from '@/components/RoundHistoryPanel'
 import { GameState } from '@/lib/types'
+import { useSounds } from '@/hooks/useSounds'
+import { soundManager } from '@/lib/sounds'
 
 function getPlayerId(): string {
   if (typeof window === 'undefined') return ''
@@ -25,6 +27,9 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const [hostPlayerId, setHostPlayerId] = useState('')
   const [currentRound, setCurrentRound] = useState(1)
   const [lastRollId, setLastRollId] = useState<string | null>(null)
+
+  // Sound effects
+  const { play: playSound } = useSounds()
 
   // Refs to access current values in polling callback
   const lastRollIdRef = useRef<string | null>(null)
@@ -65,12 +70,25 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             setPendingGameState(data.gameState)
             setIsRolling(true)
 
-            // After animation, update displayed game state
+            // Play roll sound for other player's roll
+            soundManager.play('roll')
+
+            // After animation, update displayed game state and play result sound
             setTimeout(() => {
               isRollingRef.current = false
               setIsRolling(false)
               setGameState(data.gameState)
               setPendingGameState(null)
+
+              // Play result sound based on what happened
+              const effect = data.gameState.lastRoll?.effectType
+              if (effect === 'bust') {
+                soundManager.play('bust')
+              } else if (effect === 'doubleBank') {
+                soundManager.play('doubles')
+              } else if (effect === 'add70') {
+                soundManager.play('lucky7')
+              }
             }, 3000)
           } else if (newRollId === lastRollIdRef.current && !isRollingRef.current) {
             // Same roll, not animating - update other state normally (scores, etc.)
@@ -157,14 +175,25 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       const newRollId = `${data.gameState.lastRoll.die1}-${data.gameState.lastRoll.die2}-${data.gameState.rollCountThisRound}`
       setLastRollId(newRollId)
 
-      // Start the animation
+      // Start the animation and play roll sound
       setIsRolling(true)
+      playSound('roll')
 
       // Wait for animation to complete, then update the full game state (bank, history, etc.)
       setTimeout(() => {
         setIsRolling(false)
         setGameState(data.gameState)
         setPendingGameState(null)
+
+        // Play result sound based on what happened
+        const effect = data.gameState.lastRoll?.effectType
+        if (effect === 'bust') {
+          playSound('bust')
+        } else if (effect === 'doubleBank') {
+          playSound('doubles')
+        } else if (effect === 'add70') {
+          playSound('lucky7')
+        }
       }, 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to roll')
@@ -194,6 +223,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       const data = await response.json()
       setGameState(data.gameState)
       setError('')
+      playSound('bank')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to bank')
     }
