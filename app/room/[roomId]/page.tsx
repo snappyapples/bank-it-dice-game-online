@@ -168,6 +168,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           setLastBanker(data.gameState.lastBankedPlayer || '')
           setShowBankOverlay(true)
           setTimeout(() => setShowBankOverlay(false), 2000)
+          // Play bank sound for other players' banks
+          soundManager.play('bank')
         }
 
         // Check if this is a new roll
@@ -663,9 +665,11 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   // Round winner calculation
   const roundWinnerPoints = Math.max(...gameState.players.map(p => p.pointsEarnedThisRound))
   const roundWinners = gameState.players.filter(p => p.pointsEarnedThisRound === roundWinnerPoints)
-  const roundWinnerText = roundWinners.length > 1
-    ? `${roundWinners.map(w => w.nickname).join(' & ')}`
-    : roundWinners[0]?.nickname || ''
+  const roundWinnerText = roundWinnerPoints === 0
+    ? ''
+    : roundWinners.length > 1
+      ? `${roundWinners.map(w => w.nickname).join(' & ')}`
+      : roundWinners[0]?.nickname || ''
 
   // Count banked players
   const bankedCount = gameState.players.filter(p => p.hasBankedThisRound).length
@@ -744,12 +748,18 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         {/* Round Winner Announcement */}
         {isRoundWinnerPhase && (
           <div className="mb-6 bg-gradient-to-r from-yellow-900/30 via-yellow-800/20 to-yellow-900/30 border-2 border-yellow-500 rounded-lg shadow-2xl p-8 text-center backdrop-blur-sm animate-slide-in">
-            <div className="text-6xl mb-4">🎯</div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider mb-2">Round {gameState.roundNumber} Winner</div>
-            <div className="text-5xl font-bold text-yellow-500 mb-2">{roundWinnerText}</div>
-            <div className="text-xl text-gray-300">
-              Earned <span className="font-bold text-yellow-500">{roundWinnerPoints}</span> points this round!
-            </div>
+            <div className="text-6xl mb-4">{roundWinnerPoints === 0 ? '😅' : '🎯'}</div>
+            <div className="text-sm text-gray-400 uppercase tracking-wider mb-2">Round {gameState.roundNumber}</div>
+            {roundWinnerPoints === 0 ? (
+              <div className="text-4xl font-bold text-yellow-500 mb-2">Nobody won this round!</div>
+            ) : (
+              <>
+                <div className="text-5xl font-bold text-yellow-500 mb-2">{roundWinnerText}</div>
+                <div className="text-xl text-gray-300">
+                  Earned <span className="font-bold text-yellow-500">{roundWinnerPoints}</span> points this round!
+                </div>
+              </>
+            )}
             <div className="text-gray-400 mt-4 text-sm">Next round starting soon...</div>
           </div>
         )}

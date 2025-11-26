@@ -161,16 +161,23 @@ Database schema in `supabase/schema.sql`.
 
 **Sound Themes:** Four selectable themes (classic, arcade, casino, silly) with different sound sets for each effect. Theme selection in lobby.
 
-**Lobby Music:** Requires user click on "Play Lobby Music" button due to browser autoplay policies. Toggle button shows current state.
+**Shared Sounds:** Roll sound is unified across all themes (SoundBible dice roll). Victory music uses local file `/sounds/victory.mp3`.
+
+**Local Sound Files:** `public/sounds/` contains locally hosted audio files for reliable playback (e.g., victory.mp3).
 
 **Sound Effects:**
-- **roll** - Dice shaking sound
+- **roll** - Dice shaking sound (shared across all themes)
 - **bank** - Cash register cha-ching
 - **bust** - Random selection from array of bust sounds (sad trombone, fail, etc.)
 - **doubles** - Bonus win sound
 - **lucky7** - Jackpot sound for 7 in first 3 rolls
 - **danger** - Warning alert when entering roll #4 (risky phase)
 - **lobbyMusic** - Background music in waiting room (loops, quieter volume)
+- **victory** - Epic celebration music when game ends
+
+**Lobby Music:** Requires user click on "Play Lobby Music" button due to browser autoplay policies. Toggle button shows current state.
+
+**Test Page:** `/test-sounds` page for debugging all sound URLs across themes. Shows status (idle/playing/success/error) for each sound.
 
 `hooks/useSounds.ts` provides React hook. Sounds are played in page.tsx handlers and also triggered for other players' rolls via polling.
 
@@ -178,7 +185,7 @@ Database schema in `supabase/schema.sql`.
 
 **Status Bar:** Shows round number, roll number, banked count, and Safe/Hazard indicator with appropriate styling.
 
-**Leaderboard:** `PlayersPanel` with `showLeaderboard={true}` displays players sorted by score with medal emojis (🥇🥈🥉) and "X behind" indicators.
+**Leaderboard:** `PlayersPanel` with `showLeaderboard={true}` displays players sorted by score with "X behind" indicators. Current player shown with "👤 You" indicator.
 
 **Up Next Bar:** Horizontal list showing turn order, with current roller highlighted.
 
@@ -189,6 +196,10 @@ Database schema in `supabase/schema.sql`.
 **Round Winner Card:** Displays round winner with points earned, same styling as bust card.
 
 **Share Functionality:** Share button uses Web Share API (or clipboard fallback) with URL `/?code=ROOMID` that auto-opens join modal.
+
+**Victory Celebration:** When game ends, displays confetti animation (`Confetti` component) and plays victory music. Header "Bank It" logo links to home page.
+
+**Responsive Design:** Dice size adapts to screen width (70px on mobile, 100px on desktop). Status bar wraps on narrow screens. `useIsMobile` hook in ActionPanel detects screen width.
 
 ### Game Setup
 

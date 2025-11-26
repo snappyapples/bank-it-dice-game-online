@@ -81,8 +81,71 @@ const SOUND_THEMES: Record<SoundTheme, ThemeSounds> = {
 
 export type SoundEffect = 'roll' | 'bank' | 'bust' | 'doubles' | 'lucky7' | 'gameOver' | 'danger' | 'lobbyMusic' | 'victory'
 
-// Cache for audio elements
-const audioCache: Map<string, HTMLAudioElement> = new Map()
+// Web Audio API context and buffer cache for iOS compatibility
+let audioContext: AudioContext | null = null
+const audioBufferCache: Map<string, AudioBuffer> = new Map()
+
+// Initialize AudioContext on first user interaction (required for iOS)
+function getAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null
+
+  if (!audioContext) {
+    try {
+      audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    } catch (e) {
+      return null
+    }
+  }
+
+  // Resume if suspended (iOS requires this after user gesture)
+  if (audioContext.state === 'suspended') {
+    audioContext.resume()
+  }
+
+  return audioContext
+}
+
+// Fetch and decode audio buffer
+async function loadAudioBuffer(url: string): Promise<AudioBuffer | null> {
+  const ctx = getAudioContext()
+  if (!ctx) return null
+
+  // Check cache first
+  if (audioBufferCache.has(url)) {
+    return audioBufferCache.get(url)!
+  }
+
+  try {
+    const response = await fetch(url)
+    const arrayBuffer = await response.arrayBuffer()
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
+    audioBufferCache.set(url, audioBuffer)
+    return audioBuffer
+  } catch (e) {
+    return null
+  }
+}
+
+// Play audio buffer using Web Audio API
+function playBuffer(buffer: AudioBuffer, volume: number): void {
+  const ctx = getAudioContext()
+  if (!ctx || !buffer) return
+
+  try {
+    const source = ctx.createBufferSource()
+    const gainNode = ctx.createGain()
+
+    source.buffer = buffer
+    gainNode.gain.value = volume
+
+    source.connect(gainNode)
+    gainNode.connect(ctx.destination)
+
+    source.start(0)
+  } catch (e) {
+    // Ignore errors
+  }
+}
 
 // Sound manager class with theme support
 class SoundManager {
@@ -90,6 +153,7 @@ class SoundManager {
   private volume: number = 0.5
   private theme: SoundTheme = 'classic'
   private lobbyAudio: HTMLAudioElement | null = null
+  private initialized: boolean = false
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -104,9 +168,27 @@ class SoundManager {
     }
   }
 
-  play(effect: SoundEffect): void {
+  // Call this on first user interaction to unlock audio on iOS
+  unlock(): void {
+    if (this.initialized) return
+    this.initialized = true
+
+    // Initialize AudioContext
+    getAudioContext()
+
+    // Pre-load common sounds
+    const themeSounds = SOUND_THEMES[this.theme]
+    loadAudioBuffer(themeSounds.roll)
+    loadAudioBuffer(themeSounds.bank)
+    loadAudioBuffer(themeSounds.doubles)
+  }
+
+  async play(effect: SoundEffect): Promise<void> {
     if (!this.enabled) return
     if (typeof window === 'undefined') return
+
+    // Ensure audio is unlocked
+    this.unlock()
 
     try {
       const themeSounds = SOUND_THEMES[this.theme]
@@ -122,19 +204,11 @@ class SoundManager {
 
       if (!url) return
 
-      // Get or create cached audio
-      const cacheKey = `${this.theme}-${effect}-${url}`
-      let audio = audioCache.get(cacheKey)
-
-      if (!audio) {
-        audio = new Audio(url)
-        audioCache.set(cacheKey, audio)
+      // Load and play using Web Audio API
+      const buffer = await loadAudioBuffer(url)
+      if (buffer) {
+        playBuffer(buffer, this.volume)
       }
-
-      // Clone for overlapping sounds
-      const clone = audio.cloneNode() as HTMLAudioElement
-      clone.volume = this.volume
-      clone.play().catch(() => {})
     } catch (e) {
       // Ignore errors
     }
@@ -143,6 +217,9 @@ class SoundManager {
   startLobbyMusic(): Promise<boolean> {
     if (!this.enabled) return Promise.resolve(false)
     if (typeof window === 'undefined') return Promise.resolve(false)
+
+    // Ensure audio is unlocked
+    this.unlock()
 
     try {
       const url = SOUND_THEMES[this.theme].lobbyMusic
@@ -155,6 +232,8 @@ class SoundManager {
       this.lobbyAudio = new Audio(url)
       this.lobbyAudio.volume = this.volume * 0.3 // Quieter for background
       this.lobbyAudio.loop = true
+
+      // For iOS, we need to handle the play promise
       return this.lobbyAudio.play()
         .then(() => true)
         .catch(() => false)
@@ -206,7 +285,8 @@ class SoundManager {
       if (typeof window !== 'undefined') {
         localStorage.setItem('soundTheme', theme)
       }
-      // Lobby music continues playing - no restart needed since all themes use same music
+      // Clear buffer cache when theme changes to load new sounds
+      audioBufferCache.clear()
     }
   }
 
@@ -224,7 +304,7 @@ export const soundManager = new SoundManager()
 
 // Legacy exports for compatibility
 export function preloadSounds(): void {
-  // No longer needed with on-demand loading
+  soundManager.unlock()
 }
 
 export function playSound(effect: SoundEffect, volume: number = 0.5): void {

@@ -23,8 +23,8 @@ export default function Confetti() {
         id: i,
         x: Math.random() * 100,
         color: colors[Math.floor(Math.random() * colors.length)],
-        delay: Math.random() * 3,
-        duration: 3 + Math.random() * 2,
+        delay: Math.random() * 9,
+        duration: 9 + Math.random() * 6,
         size: 8 + Math.random() * 8,
       })
     }

@@ -17,7 +17,9 @@
       "Bash(git config:*)",
       "Bash(git remote add:*)",
       "Bash(git push:*)",
-      "Bash(git remote set-url:*)"
+      "Bash(git remote set-url:*)",
+      "Bash(git tag:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
