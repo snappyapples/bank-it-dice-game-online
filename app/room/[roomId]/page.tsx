@@ -418,6 +418,39 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     }
   }
 
+  const handlePlayAgain = async () => {
+    // Stop victory music immediately
+    soundManager.stop('victory')
+
+    const currentPlayerId = localStorage.getItem('playerId') || ''
+    const currentNickname = localStorage.getItem('nickname') || ''
+
+    if (!currentPlayerId || !currentNickname) {
+      setError('Player info not found. Please refresh the page.')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/restart`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: currentPlayerId, nickname: currentNickname }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to restart')
+      }
+
+      // Reset victory played ref so it can play again next game
+      victoryPlayedRef.current = false
+      setError('')
+      // Polling will automatically detect the restart and show lobby
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to restart game')
+    }
+  }
+
   const handleThemeChange = (theme: SoundTheme) => {
     soundManager.setTheme(theme)
     setSoundTheme(theme)
@@ -427,11 +460,15 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   // Determine if game is finished (for victory sound hook - must be before early returns)
   const isGameFinished = gameState?.phase === 'finished'
 
-  // Play victory sound when game finishes
+  // Play victory sound when game finishes, stop when game restarts
   useEffect(() => {
     if (isGameFinished && !victoryPlayedRef.current) {
       victoryPlayedRef.current = true
       soundManager.play('victory')
+    } else if (!isGameFinished && victoryPlayedRef.current) {
+      // Game was restarted (by any player) - stop victory music
+      soundManager.stop('victory')
+      victoryPlayedRef.current = false
     }
   }, [isGameFinished])
 
@@ -723,12 +760,23 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             <div className="text-sm text-gray-400 uppercase tracking-wider mb-2">Winner is:</div>
             <div className="text-5xl font-bold text-brand-lime mb-2">{winnerText}</div>
             <div className="text-2xl text-gray-300 mb-6">Final Score: {maxScore}</div>
-            <button
-              onClick={() => window.location.href = '/'}
-              className="px-8 py-3 bg-brand-lime text-black font-bold rounded-full text-lg hover:bg-brand-lime/90 transition-all hover:scale-105"
-            >
-              Play Again
-            </button>
+            <div className="flex gap-4 justify-center flex-wrap">
+              <button
+                onClick={handlePlayAgain}
+                className="px-8 py-3 bg-brand-lime text-black font-bold rounded-full text-lg hover:bg-brand-lime/90 transition-all hover:scale-105"
+              >
+                Play Again
+              </button>
+              <button
+                onClick={() => {
+                  soundManager.stop('victory')
+                  window.location.href = '/'
+                }}
+                className="px-8 py-3 bg-gray-700 text-white font-bold rounded-full text-lg hover:bg-gray-600 transition-all hover:scale-105"
+              >
+                New Room
+              </button>
+            </div>
           </div>
         )}
 

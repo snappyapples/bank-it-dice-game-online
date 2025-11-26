@@ -81,67 +81,54 @@ const SOUND_THEMES: Record<SoundTheme, ThemeSounds> = {
 
 export type SoundEffect = 'roll' | 'bank' | 'bust' | 'doubles' | 'lucky7' | 'gameOver' | 'danger' | 'lobbyMusic' | 'victory'
 
-// Web Audio API context and buffer cache for iOS compatibility
-let audioContext: AudioContext | null = null
-const audioBufferCache: Map<string, AudioBuffer> = new Map()
+// Audio element pool for playing multiple sounds simultaneously
+// Using HTMLAudioElement instead of Web Audio API because:
+// 1. HTMLAudioElement can play cross-origin audio without CORS headers
+// 2. Creating new Audio elements each time works on iOS (unlike cloneNode)
+const audioPool: Map<string, HTMLAudioElement[]> = new Map()
 
-// Initialize AudioContext on first user interaction (required for iOS)
-function getAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null
+// Get or create an available audio element for a URL
+function getAudioElement(url: string, volume: number): HTMLAudioElement {
+  // Get existing pool for this URL or create new one
+  let pool = audioPool.get(url)
+  if (!pool) {
+    pool = []
+    audioPool.set(url, pool)
+  }
 
-  if (!audioContext) {
-    try {
-      audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-    } catch (e) {
-      return null
+  // Find an available (not playing) element
+  for (const audio of pool) {
+    if (audio.paused || audio.ended) {
+      audio.currentTime = 0
+      audio.volume = volume
+      return audio
     }
   }
 
-  // Resume if suspended (iOS requires this after user gesture)
-  if (audioContext.state === 'suspended') {
-    audioContext.resume()
+  // Create new element if none available (limit pool size)
+  if (pool.length < 5) {
+    const audio = new Audio(url)
+    audio.volume = volume
+    pool.push(audio)
+    return audio
   }
 
-  return audioContext
+  // Reuse oldest if pool is full
+  const audio = pool[0]
+  audio.currentTime = 0
+  audio.volume = volume
+  return audio
 }
 
-// Fetch and decode audio buffer
-async function loadAudioBuffer(url: string): Promise<AudioBuffer | null> {
-  const ctx = getAudioContext()
-  if (!ctx) return null
-
-  // Check cache first
-  if (audioBufferCache.has(url)) {
-    return audioBufferCache.get(url)!
-  }
+// Play a sound using HTMLAudioElement
+function playAudioElement(url: string, volume: number): void {
+  if (typeof window === 'undefined') return
 
   try {
-    const response = await fetch(url)
-    const arrayBuffer = await response.arrayBuffer()
-    const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-    audioBufferCache.set(url, audioBuffer)
-    return audioBuffer
-  } catch (e) {
-    return null
-  }
-}
-
-// Play audio buffer using Web Audio API
-function playBuffer(buffer: AudioBuffer, volume: number): void {
-  const ctx = getAudioContext()
-  if (!ctx || !buffer) return
-
-  try {
-    const source = ctx.createBufferSource()
-    const gainNode = ctx.createGain()
-
-    source.buffer = buffer
-    gainNode.gain.value = volume
-
-    source.connect(gainNode)
-    gainNode.connect(ctx.destination)
-
-    source.start(0)
+    const audio = getAudioElement(url, volume)
+    audio.play().catch(() => {
+      // Ignore autoplay failures - usually due to no user interaction yet
+    })
   } catch (e) {
     // Ignore errors
   }
@@ -173,17 +160,14 @@ class SoundManager {
     if (this.initialized) return
     this.initialized = true
 
-    // Initialize AudioContext
-    getAudioContext()
-
-    // Pre-load common sounds
+    // Pre-load common sounds by creating Audio elements
     const themeSounds = SOUND_THEMES[this.theme]
-    loadAudioBuffer(themeSounds.roll)
-    loadAudioBuffer(themeSounds.bank)
-    loadAudioBuffer(themeSounds.doubles)
+    getAudioElement(themeSounds.roll, this.volume)
+    getAudioElement(themeSounds.bank, this.volume)
+    getAudioElement(themeSounds.doubles, this.volume)
   }
 
-  async play(effect: SoundEffect): Promise<void> {
+  play(effect: SoundEffect): void {
     if (!this.enabled) return
     if (typeof window === 'undefined') return
 
@@ -204,13 +188,55 @@ class SoundManager {
 
       if (!url) return
 
-      // Load and play using Web Audio API
-      const buffer = await loadAudioBuffer(url)
-      if (buffer) {
-        playBuffer(buffer, this.volume)
-      }
+      // Play using HTMLAudioElement
+      playAudioElement(url, this.volume)
     } catch (e) {
       // Ignore errors
+    }
+  }
+
+  stop(effect: SoundEffect): void {
+    if (typeof window === 'undefined') return
+
+    try {
+      const themeSounds = SOUND_THEMES[this.theme]
+      let url: string
+
+      if (effect === 'bust') {
+        // Stop all bust sounds
+        themeSounds.bust.forEach(bustUrl => {
+          const pool = audioPool.get(bustUrl)
+          if (pool) {
+            pool.forEach(audio => {
+              audio.pause()
+              audio.currentTime = 0
+            })
+          }
+        })
+        return
+      } else {
+        url = themeSounds[effect]
+      }
+
+      if (!url) {
+        console.log('[SoundManager] stop: no URL for effect', effect)
+        return
+      }
+
+      console.log('[SoundManager] stop: stopping', effect, 'url:', url)
+
+      // Stop all audio elements for this URL
+      const pool = audioPool.get(url)
+      console.log('[SoundManager] stop: pool found:', !!pool, 'size:', pool?.length)
+      if (pool) {
+        pool.forEach(audio => {
+          console.log('[SoundManager] stop: pausing audio, paused:', audio.paused)
+          audio.pause()
+          audio.currentTime = 0
+        })
+      }
+    } catch (e) {
+      console.error('[SoundManager] stop error:', e)
     }
   }
 
@@ -285,8 +311,8 @@ class SoundManager {
       if (typeof window !== 'undefined') {
         localStorage.setItem('soundTheme', theme)
       }
-      // Clear buffer cache when theme changes to load new sounds
-      audioBufferCache.clear()
+      // Clear audio pool when theme changes to load new sounds
+      audioPool.clear()
     }
   }
 

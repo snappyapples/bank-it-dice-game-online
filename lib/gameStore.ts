@@ -163,6 +163,37 @@ class GameStore {
     return player?.playerId
   }
 
+  async restartRoom(roomId: string, newHostPlayerId: string, newHostNickname: string): Promise<{ success: boolean; error?: string }> {
+    const room = await this.getRoom(roomId)
+    if (!room) return { success: false, error: 'Room not found' }
+
+    // Create fresh player list with new host as only player
+    const players = new Map([[newHostPlayerId, { nickname: newHostNickname, playerId: 'player-0' }]])
+
+    // Initialize fresh game state, preserving totalRounds from previous game
+    const newGameState = initGame([newHostNickname], room.totalRounds)
+
+    const { error } = await supabase
+      .from('rooms')
+      .update({
+        host_player_id: newHostPlayerId,
+        started: false,
+        game_state: {
+          ...newGameState,
+          _players: Object.fromEntries(players),
+        },
+      })
+      .eq('id', roomId)
+
+    if (error) {
+      console.error('[GameStore] Error restarting room:', error)
+      return { success: false, error: 'Failed to restart room' }
+    }
+
+    console.log(`[GameStore] Restarted room ${roomId} with new host ${newHostNickname}`)
+    return { success: true }
+  }
+
   private mapRowToRoom(row: RoomRow): Room {
     const gameStateWithPlayers = row.game_state as any
     const playersObj = gameStateWithPlayers._players || {}
