@@ -1,13 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import AnimatedDice from '@/components/AnimatedDice'
 import CreateGameModal from '@/components/CreateGameModal'
 import JoinGameModal from '@/components/JoinGameModal'
 
-export default function Home() {
+function HomeContent() {
+  const searchParams = useSearchParams()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showJoinModal, setShowJoinModal] = useState(false)
+  const [initialRoomCode, setInitialRoomCode] = useState('')
+
+  // Check for room code in URL params (from shared links)
+  useEffect(() => {
+    const code = searchParams.get('code')
+    if (code) {
+      setInitialRoomCode(code.toUpperCase())
+      setShowJoinModal(true)
+    }
+  }, [searchParams])
 
   return (
     <>
@@ -61,7 +73,19 @@ export default function Home() {
 
       {/* Modals */}
       <CreateGameModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
-      <JoinGameModal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} />
+      <JoinGameModal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} initialRoomCode={initialRoomCode} />
     </>
+  )
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-1 flex-col items-center justify-center p-4">
+        <div className="text-gray-400 text-xl">Loading...</div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   )
 }

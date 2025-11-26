@@ -17,11 +17,11 @@ export async function POST(
       )
     }
 
-    const success = await gameStore.joinRoom(roomId, playerId, nickname)
+    const result = await gameStore.joinRoom(roomId, playerId, nickname)
 
-    if (!success) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Failed to join room. Room may not exist or game already started.' },
+        { error: result.error || 'Failed to join room' },
         { status: 400 }
       )
     }

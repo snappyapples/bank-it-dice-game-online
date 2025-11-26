@@ -7,9 +7,11 @@ interface ThreeDDiceProps {
   isRolling: boolean
   delay?: number // Delay in ms before this die starts rolling
   duration?: number // Duration of the roll animation in ms
+  size?: number // Size in pixels (default 100, use smaller for mobile)
 }
 
-export default function ThreeDDice({ value, isRolling, delay = 0, duration = 2500 }: ThreeDDiceProps) {
+export default function ThreeDDice({ value, isRolling, delay = 0, duration = 2500, size = 100 }: ThreeDDiceProps) {
+  const translateZ = size / 2
   const [displayValue, setDisplayValue] = useState(value)
   const diceRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<Animation | null>(null)
@@ -114,39 +116,43 @@ export default function ThreeDDice({ value, isRolling, delay = 0, duration = 250
     }
   }, [value, isRolling])
 
+  const dotSize = Math.max(8, size * 0.12) // Scale dots proportionally
+  const padding = Math.max(8, size * 0.12)
+  const borderRadius = Math.max(8, size * 0.12)
+
   return (
     <div className="perspective-container" style={{ perspective: '1000px' }}>
       <div
         ref={diceRef}
         className="dice-3d"
         style={{
-          width: '100px',
-          height: '100px',
+          width: `${size}px`,
+          height: `${size}px`,
           position: 'relative',
           transformStyle: 'preserve-3d',
           transform: `rotateX(${getRotation(displayValue).x}deg) rotateY(${getRotation(displayValue).y}deg)`,
         }}
       >
         {/* Face 1 (front) */}
-        <div className="dice-face" style={{ transform: 'rotateY(0deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: `rotateY(0deg) translateZ(${translateZ}px)` }}>
           <div className="dot" style={{ gridColumn: '2', gridRow: '2' }}></div>
         </div>
 
         {/* Face 2 (right) */}
-        <div className="dice-face" style={{ transform: 'rotateY(90deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: `rotateY(90deg) translateZ(${translateZ}px)` }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '3' }}></div>
         </div>
 
         {/* Face 3 (left) */}
-        <div className="dice-face" style={{ transform: 'rotateY(-90deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: `rotateY(-90deg) translateZ(${translateZ}px)` }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '2', gridRow: '2' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '3' }}></div>
         </div>
 
         {/* Face 4 (top) */}
-        <div className="dice-face" style={{ transform: 'rotateX(90deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: `rotateX(90deg) translateZ(${translateZ}px)` }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '1', gridRow: '3' }}></div>
@@ -154,7 +160,7 @@ export default function ThreeDDice({ value, isRolling, delay = 0, duration = 250
         </div>
 
         {/* Face 5 (bottom) */}
-        <div className="dice-face" style={{ transform: 'rotateX(-90deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: `rotateX(-90deg) translateZ(${translateZ}px)` }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '2', gridRow: '2' }}></div>
@@ -163,7 +169,7 @@ export default function ThreeDDice({ value, isRolling, delay = 0, duration = 250
         </div>
 
         {/* Face 6 (back) */}
-        <div className="dice-face" style={{ transform: 'rotateY(180deg) translateZ(50px)' }}>
+        <div className="dice-face" style={{ transform: `rotateY(180deg) translateZ(${translateZ}px)` }}>
           <div className="dot" style={{ gridColumn: '1', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '3', gridRow: '1' }}></div>
           <div className="dot" style={{ gridColumn: '1', gridRow: '2' }}></div>
@@ -176,22 +182,22 @@ export default function ThreeDDice({ value, isRolling, delay = 0, duration = 250
       <style jsx>{`
         .dice-face {
           position: absolute;
-          width: 100px;
-          height: 100px;
+          width: ${size}px;
+          height: ${size}px;
           background: linear-gradient(145deg, #ffffff, #e6e6e6);
           border: 2px solid #333;
-          border-radius: 12px;
+          border-radius: ${borderRadius}px;
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           grid-template-rows: repeat(3, 1fr);
-          padding: 12px;
+          padding: ${padding}px;
           backface-visibility: visible;
           box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .dot {
-          width: 12px;
-          height: 12px;
+          width: ${dotSize}px;
+          height: ${dotSize}px;
           background: #1a1a1a;
           border-radius: 50%;
           margin: auto;

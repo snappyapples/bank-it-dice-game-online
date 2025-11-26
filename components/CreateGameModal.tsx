@@ -8,6 +8,15 @@ interface CreateGameModalProps {
   onClose: () => void
 }
 
+type RoundPreset = 'short' | 'medium' | 'long' | 'custom'
+
+const ROUND_PRESETS: Record<RoundPreset, { label: string; rounds: number | null }> = {
+  short: { label: 'Short', rounds: 5 },
+  medium: { label: 'Medium', rounds: 20 },
+  long: { label: 'Long', rounds: 40 },
+  custom: { label: 'Custom', rounds: null },
+}
+
 // Generate a unique player ID and store in localStorage
 function getOrCreatePlayerId(): string {
   if (typeof window === 'undefined') return ''
@@ -23,7 +32,8 @@ function getOrCreatePlayerId(): string {
 export default function CreateGameModal({ isOpen, onClose }: CreateGameModalProps) {
   const router = useRouter()
   const [nickname, setNickname] = useState('')
-  const [rounds, setRounds] = useState(5)
+  const [selectedPreset, setSelectedPreset] = useState<RoundPreset>('short')
+  const [customRounds, setCustomRounds] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -36,6 +46,13 @@ export default function CreateGameModal({ isOpen, onClose }: CreateGameModalProp
       }
     }
   }, [isOpen])
+
+  const getRounds = () => {
+    if (selectedPreset === 'custom') {
+      return customRounds
+    }
+    return ROUND_PRESETS[selectedPreset].rounds!
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,7 +69,7 @@ export default function CreateGameModal({ isOpen, onClose }: CreateGameModalProp
         body: JSON.stringify({
           playerId,
           nickname: nickname.trim(),
-          totalRounds: rounds,
+          totalRounds: getRounds(),
         }),
       })
 
@@ -71,9 +88,6 @@ export default function CreateGameModal({ isOpen, onClose }: CreateGameModalProp
       setIsLoading(false)
     }
   }
-
-  const incrementRounds = () => setRounds(Math.min(rounds + 1, 20))
-  const decrementRounds = () => setRounds(Math.max(rounds - 1, 3))
 
   if (!isOpen) return null
 
@@ -116,38 +130,48 @@ export default function CreateGameModal({ isOpen, onClose }: CreateGameModalProp
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-300" htmlFor="rounds">
-              Number of Rounds
+          <div className="flex flex-col gap-3">
+            <label className="text-sm font-medium text-gray-300">
+              Game Length
             </label>
-            <div className="relative flex items-center">
-              <button
-                className="absolute left-0 flex h-full w-12 items-center justify-center rounded-l-lg text-gray-400 transition-colors hover:bg-brand-purple hover:text-white"
-                type="button"
-                onClick={decrementRounds}
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                </svg>
-              </button>
-              <input
-                className="form-input-number w-full rounded-lg border-2 border-gray-600 bg-gray-900 px-4 py-3 text-center text-lg font-bold text-white transition-colors focus:border-brand-lime focus:outline-none focus:ring-1 focus:ring-brand-lime"
-                id="rounds"
-                name="rounds"
-                type="number"
-                value={rounds}
-                onChange={(e) => setRounds(Math.max(3, Math.min(20, parseInt(e.target.value) || 5)))}
-              />
-              <button
-                className="absolute right-0 flex h-full w-12 items-center justify-center rounded-r-lg text-gray-400 transition-colors hover:bg-brand-purple hover:text-white"
-                type="button"
-                onClick={incrementRounds}
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
+            <div className="grid grid-cols-4 gap-2">
+              {(Object.keys(ROUND_PRESETS) as RoundPreset[]).map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setSelectedPreset(preset)}
+                  className={`py-3 px-2 rounded-lg font-medium text-sm transition-all ${
+                    selectedPreset === preset
+                      ? 'bg-brand-lime text-black'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  <div>{ROUND_PRESETS[preset].label}</div>
+                  {preset !== 'custom' && (
+                    <div className="text-xs opacity-70">{ROUND_PRESETS[preset].rounds} rounds</div>
+                  )}
+                </button>
+              ))}
             </div>
+
+            {selectedPreset === 'custom' && (
+              <div className="mt-2">
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="3"
+                    max="50"
+                    value={customRounds}
+                    onChange={(e) => setCustomRounds(parseInt(e.target.value))}
+                    className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-brand-lime"
+                  />
+                  <div className="w-16 text-center">
+                    <span className="text-2xl font-bold text-brand-lime">{customRounds}</span>
+                    <span className="text-xs text-gray-400 block">rounds</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <button

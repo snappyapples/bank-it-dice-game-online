@@ -2,14 +2,27 @@ import { Player } from '@/lib/types'
 
 interface PlayersPanelProps {
   players: Player[]
+  showLeaderboard?: boolean
+  currentPlayerNickname?: string
 }
 
-export default function PlayersPanel({ players }: PlayersPanelProps) {
+export default function PlayersPanel({ players, showLeaderboard = false, currentPlayerNickname }: PlayersPanelProps) {
+  // Sort players by score for leaderboard
+  const sortedPlayers = showLeaderboard
+    ? [...players].sort((a, b) => b.score - a.score)
+    : players
+
   // Calculate who is in the lead
   const maxScore = Math.max(...players.map(p => p.score))
   const hasAnyPoints = maxScore > 0
 
   const isLeader = (player: Player) => hasAnyPoints && player.score === maxScore
+
+  const getPointsDiff = (player: Player) => {
+    if (!hasAnyPoints) return null
+    if (isLeader(player)) return null
+    return maxScore - player.score
+  }
 
   const getStatusBadge = (player: Player) => {
     if (player.hasBankedThisRound) {
@@ -46,37 +59,64 @@ export default function PlayersPanel({ players }: PlayersPanelProps) {
     return classes
   }
 
+  const isYou = (player: Player) => player.nickname === currentPlayerNickname
+
   return (
     <div className="bg-[#141414] border border-white/10 rounded-lg shadow-xl p-6 backdrop-blur-sm">
-      <h3 className="text-xl font-bold mb-4 text-gray-200 uppercase tracking-wider">Players</h3>
+      <h3 className="text-xl font-bold mb-4 text-gray-200 uppercase tracking-wider">
+        {showLeaderboard ? 'Leaderboard' : 'Players'}
+      </h3>
       <div className="space-y-3">
-        {players.map((player) => (
-          <div
-            key={player.id}
-            className={`p-4 rounded-lg border transition-all ${getCardClasses(player)}`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                {isLeader(player) && (
-                  <span className="text-yellow-500 text-xl">👑</span>
-                )}
-                <span className={`font-semibold text-lg ${isLeader(player) ? 'text-yellow-500' : ''}`}>
-                  {player.nickname}
-                </span>
-                {player.isCurrentRoller && (
-                  <span className="text-brand-lime text-xl">🎯</span>
+        {sortedPlayers.map((player, index) => {
+          const pointsDiff = getPointsDiff(player)
+
+          return (
+            <div
+              key={player.id}
+              className={`p-4 rounded-lg border transition-all ${getCardClasses(player)}`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  {isLeader(player) && (
+                    <span className="text-yellow-500 text-xl">👑</span>
+                  )}
+                  <span className={`font-semibold text-lg ${isLeader(player) ? 'text-yellow-500' : ''}`}>
+                    {player.nickname}
+                  </span>
+                  {isYou(player) && (
+                    <span className="text-brand-teal text-sm">👤 You</span>
+                  )}
+                  {player.isCurrentRoller && (
+                    <span className="text-brand-lime text-xl">🎯</span>
+                  )}
+                </div>
+                {getStatusBadge(player)}
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className={`text-xl font-bold ${isLeader(player) ? 'text-yellow-500' : 'text-gray-200'}`}>
+                    {player.score}
+                  </span>
+                  {pointsDiff !== null && (
+                    <span className="text-sm text-bust-red">
+                      -{pointsDiff} behind
+                    </span>
+                  )}
+                  {isLeader(player) && hasAnyPoints && (
+                    <span className="text-sm text-yellow-500">
+                      Leading
+                    </span>
+                  )}
+                </div>
+                {player.pointsEarnedThisRound > 0 && (
+                  <span className="text-sm text-brand-lime">
+                    +{player.pointsEarnedThisRound} this round
+                  </span>
                 )}
               </div>
-              {getStatusBadge(player)}
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400 uppercase tracking-wider">Total Score</span>
-              <span className={`text-xl font-bold ${isLeader(player) ? 'text-yellow-500' : 'text-gray-200'}`}>
-                {player.score}
-              </span>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

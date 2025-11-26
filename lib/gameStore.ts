@@ -46,11 +46,17 @@ class GameStore {
     return roomId
   }
 
-  async joinRoom(roomId: string, playerId: string, nickname: string): Promise<boolean> {
+  async joinRoom(roomId: string, playerId: string, nickname: string): Promise<{ success: boolean; error?: string }> {
     const room = await this.getRoom(roomId)
-    if (!room) return false
-    if (room.started) return false // Can't join a started game
-    if (room.players.has(playerId)) return true // Already in room
+    if (!room) return { success: false, error: 'Room not found' }
+    if (room.started) return { success: false, error: 'Game has already started' }
+    if (room.players.has(playerId)) return { success: true } // Already in room
+
+    // Check for duplicate nickname (case-insensitive)
+    const existingNicknames = Array.from(room.players.values()).map(p => p.nickname.toLowerCase())
+    if (existingNicknames.includes(nickname.toLowerCase())) {
+      return { success: false, error: 'That name is already taken. Please choose a different name.' }
+    }
 
     // Add player to room
     const playerIndex = room.players.size
@@ -79,10 +85,10 @@ class GameStore {
 
     if (error) {
       console.error('[GameStore] Error joining room:', error)
-      return false
+      return { success: false, error: 'Failed to join room' }
     }
 
-    return true
+    return { success: true }
   }
 
   async startGame(roomId: string): Promise<boolean> {

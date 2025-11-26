@@ -41,7 +41,7 @@ export interface RoundHistoryEntry {
   topPoints: number
 }
 
-export type GamePhase = 'lobby' | 'inRound' | 'betweenRounds' | 'bust' | 'finished'
+export type GamePhase = 'lobby' | 'inRound' | 'betweenRounds' | 'bust' | 'roundWinner' | 'finished'
 
 export interface GameState {
   players: Player[]
@@ -54,5 +54,8 @@ export interface GameState {
   roundHistory: RoundHistoryEntry[]
   phase?: GamePhase
   bustAt?: number // Timestamp when bust occurred (for delay before new round)
+  roundWinnerAt?: number // Timestamp when round winner card shown (for delay before new round)
   lastRollerIndex?: number // Track who was rolling when round ended (for next round start)
+  lastBankedPlayer?: string // Nickname of the last player who banked (for overlay display)
+  lastBankedAt?: number // Timestamp when last player banked
 }

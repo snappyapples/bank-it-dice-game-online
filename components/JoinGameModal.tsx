@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 interface JoinGameModalProps {
   isOpen: boolean
   onClose: () => void
+  initialRoomCode?: string
 }
 
 // Generate a unique player ID and store in localStorage
@@ -20,22 +21,25 @@ function getOrCreatePlayerId(): string {
   return playerId
 }
 
-export default function JoinGameModal({ isOpen, onClose }: JoinGameModalProps) {
+export default function JoinGameModal({ isOpen, onClose, initialRoomCode = '' }: JoinGameModalProps) {
   const router = useRouter()
   const [nickname, setNickname] = useState('')
-  const [roomCode, setRoomCode] = useState('')
+  const [roomCode, setRoomCode] = useState(initialRoomCode)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Load saved nickname from localStorage
+  // Load saved nickname from localStorage and set initial room code
   useEffect(() => {
     if (isOpen) {
       const savedNickname = localStorage.getItem('nickname')
       if (savedNickname) {
         setNickname(savedNickname)
       }
+      if (initialRoomCode) {
+        setRoomCode(initialRoomCode.toUpperCase())
+      }
     }
-  }, [isOpen])
+  }, [isOpen, initialRoomCode])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

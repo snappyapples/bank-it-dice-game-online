@@ -1,10 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { RollEffect } from '@/lib/types'
+import { RollEffect, Player } from '@/lib/types'
 import ThreeDDice from './ThreeDDice'
 
 const ROLL_DURATION = 2500  // Dice roll for 2.5 seconds
+
+// Hook to detect mobile screen size
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 400)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  return isMobile
+}
 
 interface ActionPanelProps {
   isCurrentPlayer: boolean
@@ -13,8 +27,8 @@ interface ActionPanelProps {
   isRolling?: boolean
   isBustPhase?: boolean
   currentRollerName?: string
+  turnOrder?: Player[]
   onRoll: () => void
-  onBank: () => void
 }
 
 export default function ActionPanel({
@@ -24,10 +38,12 @@ export default function ActionPanel({
   isRolling = false,
   isBustPhase = false,
   currentRollerName = '',
+  turnOrder = [],
   onRoll,
-  onBank,
 }: ActionPanelProps) {
   const [isBouncing, setIsBouncing] = useState(false)
+  const isMobile = useIsMobile()
+  const diceSize = isMobile ? 70 : 100
 
   // Handle bounce animation when roll completes
   useEffect(() => {
@@ -50,82 +66,87 @@ export default function ActionPanel({
 
   return (
     <div className="bg-[#141414] border border-white/10 rounded-lg shadow-xl p-6 backdrop-blur-sm">
-      <h3 className="text-xl font-bold mb-4 text-gray-200 uppercase tracking-wider">Actions</h3>
+      <h3 className="text-xl font-bold mb-4 text-gray-200 uppercase tracking-wider">Roll the Dice</h3>
 
       {/* 3D Dice Display - dice + dice = total */}
       <div className="mb-6">
-        <div className="flex gap-4 items-center justify-center my-6">
+        <div className={`flex items-center justify-center my-6 ${isMobile ? 'gap-2' : 'gap-4'}`}>
           {/* Die 1 */}
           <ThreeDDice
             value={die1Value}
             isRolling={isRolling}
             duration={ROLL_DURATION}
+            size={diceSize}
           />
 
-          <div className="text-2xl font-bold text-gray-400">+</div>
+          <div className={`font-bold text-gray-400 ${isMobile ? 'text-xl' : 'text-2xl'}`}>+</div>
 
           {/* Die 2 */}
           <ThreeDDice
             value={die2Value}
             isRolling={isRolling}
             duration={ROLL_DURATION}
+            size={diceSize}
           />
 
-          <div className="text-2xl font-bold text-gray-400">=</div>
+          <div className={`font-bold text-gray-400 ${isMobile ? 'text-xl' : 'text-2xl'}`}>=</div>
 
           {/* Total */}
-          <div className={`text-4xl font-bold transition-all duration-300 min-w-[60px] text-center ${
-            isRolling ? 'text-gray-400' : 'text-brand-lime'
-          } ${isBouncing ? 'animate-bounce' : ''}`}>
+          <div className={`font-bold transition-all duration-300 text-center ${
+            isMobile ? 'text-3xl min-w-[50px]' : 'text-4xl min-w-[60px]'
+          } ${isRolling ? 'text-gray-400' : 'text-brand-lime'} ${isBouncing ? 'animate-bounce' : ''}`}>
             {isRolling ? '?' : total}
           </div>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="space-y-3 mt-6">
-        <button
-          onClick={onRoll}
-          disabled={!isCurrentPlayer || hasBanked || isRolling || isBustPhase}
-          className={`
-            w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
-            ${
-              isCurrentPlayer && !hasBanked && !isRolling && !isBustPhase
-                ? 'bg-brand-lime hover:bg-brand-lime/90 hover:scale-105 text-black shadow-lg shadow-brand-lime/20 cursor-pointer'
-                : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-            }
-          `}
-        >
-          {isRolling
-            ? '🎲 Rolling...'
-            : isCurrentPlayer
-              ? '🎲 Roll Dice'
-              : `🎲 ${currentRollerName}'s turn to roll`}
-        </button>
-
-        <button
-          onClick={onBank}
-          disabled={hasBanked || isRolling || isBustPhase}
-          className={`
-            w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
-            ${
-              !hasBanked && !isRolling && !isBustPhase
-                ? 'bg-brand-teal hover:bg-brand-teal/90 hover:scale-105 text-white shadow-lg shadow-brand-teal/20 cursor-pointer'
-                : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-            }
-          `}
-        >
-          💰 Bank Points
-        </button>
+      {/* Roll Button or Up Next - min-height to prevent layout jumping */}
+      <div className="mt-6 min-h-[72px]">
+        {isCurrentPlayer ? (
+          // Current player: show button when not rolling, hide during roll
+          !isRolling && (
+            <button
+              onClick={onRoll}
+              disabled={hasBanked || isBustPhase}
+              className={`
+                w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
+                ${
+                  !hasBanked && !isBustPhase
+                    ? 'bg-brand-lime hover:bg-brand-lime/90 hover:scale-105 text-black shadow-lg shadow-brand-lime/20 cursor-pointer'
+                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                }
+              `}
+            >
+              🎲 Roll Dice
+            </button>
+          )
+        ) : (
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <div className="text-sm text-gray-400 mb-3">Up Next:</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {turnOrder.map((player, index) => (
+                <div
+                  key={player.id}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full whitespace-nowrap ${
+                    index === 0
+                      ? 'bg-brand-lime text-black font-bold'
+                      : 'bg-gray-800 text-gray-300'
+                  }`}
+                >
+                  {index === 0 && <span>🎯</span>}
+                  {player.nickname}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Status Text - only show important states */}
-      {(isBustPhase || hasBanked) && (
-        <div className="mt-4 text-center text-sm text-gray-400">
-          {isBustPhase && <p className="text-bust-red">Round ended - new round starting soon...</p>}
-          {!isBustPhase && hasBanked && <p>You have banked this round</p>}
-        </div>
-      )}
+      {/* Status Text - fixed height placeholder to prevent layout jumping */}
+      <div className="mt-4 min-h-[24px] text-center text-sm text-gray-400">
+        {isBustPhase && <p className="text-bust-red">Round ended - new round starting soon...</p>}
+        {!isBustPhase && hasBanked && <p>You have banked this round</p>}
+      </div>
     </div>
   )
 }

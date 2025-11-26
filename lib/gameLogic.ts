@@ -207,7 +207,7 @@ export function applyBank(state: GameState, playerId: string): GameState {
           score: p.score + state.bankValue,
           hasBankedThisRound: true,
           isCurrentRoller: false,
-          pointsEarnedThisRound: state.bankValue
+          pointsEarnedThisRound: p.pointsEarnedThisRound + state.bankValue
         }
       : p
   )
@@ -215,14 +215,21 @@ export function applyBank(state: GameState, playerId: string): GameState {
   let newState: GameState = {
     ...state,
     players: updatedPlayers,
+    lastBankedPlayer: player.nickname,
+    lastBankedAt: Date.now(),
   }
 
   // Check if all players have banked
   const allBanked = updatedPlayers.every((p) => p.hasBankedThisRound)
   if (allBanked) {
-    // Save the last roller index before starting new round
-    newState = { ...newState, lastRollerIndex: currentRollerIndex }
-    return startNewRound(newState)
+    // Save the last roller index before showing round winner
+    newState = {
+      ...newState,
+      lastRollerIndex: currentRollerIndex,
+      phase: 'roundWinner',
+      roundWinnerAt: Date.now(),
+    }
+    return newState
   }
 
   // Only advance turn if the banking player was the current roller
@@ -308,11 +315,34 @@ export function checkBustTransition(state: GameState, delayMs: number = 10000): 
 
   const elapsed = Date.now() - state.bustAt
   if (elapsed >= delayMs) {
+    // Delay has passed, show round winner card
+    return {
+      ...state,
+      phase: 'roundWinner',
+      roundWinnerAt: Date.now(),
+    }
+  }
+
+  // Still in bust phase
+  return state
+}
+
+/**
+ * Check if round winner delay has passed and transition to new round if needed
+ * Call this when getting game state to auto-advance from round winner
+ */
+export function checkRoundWinnerTransition(state: GameState, delayMs: number = 5000): GameState {
+  if (state.phase !== 'roundWinner' || !state.roundWinnerAt) {
+    return state
+  }
+
+  const elapsed = Date.now() - state.roundWinnerAt
+  if (elapsed >= delayMs) {
     // Delay has passed, start new round
     return startNewRound(state)
   }
 
-  // Still in bust phase
+  // Still showing round winner
   return state
 }
 
@@ -374,6 +404,9 @@ export function startNewRound(state: GameState): GameState {
     phase: 'inRound',
     lastRollerIndex: undefined, // Clear for new round
     bustAt: undefined,
+    roundWinnerAt: undefined,
+    lastBankedPlayer: undefined,
+    lastBankedAt: undefined,
   }
 }
 
