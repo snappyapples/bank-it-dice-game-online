@@ -1,8 +1,6 @@
 'use client'
 
-// Sound themes with different sound sets
-export type SoundTheme = 'classic' | 'arcade' | 'casino' | 'silly'
-
+// Simplified sound system - single theme with all the best sounds
 interface ThemeSounds {
   roll: string
   bank: string
@@ -16,68 +14,32 @@ interface ThemeSounds {
 }
 
 // Free sound URLs from various royalty-free sources
-// Shared sounds used across all themes
 const SHARED_ROLL = 'https://soundbible.com/grab.php?id=182&type=mp3'
-const SHARED_VICTORY = '/sounds/victory.mp3' // Awards ceremony winner music
+const SHARED_VICTORY = '/sounds/victory.mp3'
+const LOBBY_MUSIC = '/sounds/lobby.mp3' // User-provided Udio track
 
-const SOUND_THEMES: Record<SoundTheme, ThemeSounds> = {
-  classic: {
-    roll: SHARED_ROLL,
-    bank: 'https://soundbible.com/grab.php?id=333&type=mp3',
-    bust: [
-      'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3', // Negative fail
-    ],
-    doubles: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
-    lucky7: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3',
-    gameOver: 'https://assets.mixkit.co/active_storage/sfx/2658/2658-preview.mp3', // Sad game over
-    danger: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-    lobbyMusic: 'https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3',
-    victory: SHARED_VICTORY,
-  },
-  arcade: {
-    roll: SHARED_ROLL,
-    bank: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3', // Coin collect
-    bust: [
-      'https://assets.mixkit.co/active_storage/sfx/2953/2953-preview.mp3', // Wrong answer
-      'https://assets.mixkit.co/active_storage/sfx/2954/2954-preview.mp3', // Failure
-    ],
-    doubles: 'https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3', // Power up
-    lucky7: 'https://assets.mixkit.co/active_storage/sfx/2021/2021-preview.mp3', // Achievement
-    gameOver: 'https://assets.mixkit.co/active_storage/sfx/1432/1432-preview.mp3', // Fanfare
-    danger: 'https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3', // Alert
-    lobbyMusic: 'https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3',
-    victory: SHARED_VICTORY,
-  },
-  casino: {
-    roll: SHARED_ROLL,
-    bank: 'https://assets.mixkit.co/active_storage/sfx/888/888-preview.mp3', // Slot machine
-    bust: [
-      'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3',
-      'https://assets.mixkit.co/active_storage/sfx/470/470-preview.mp3', // Sad trombone
-    ],
-    doubles: 'https://assets.mixkit.co/active_storage/sfx/2001/2001-preview.mp3', // Jackpot
-    lucky7: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3',
-    gameOver: 'https://assets.mixkit.co/active_storage/sfx/2658/2658-preview.mp3', // Sad game over
-    danger: 'https://assets.mixkit.co/active_storage/sfx/104/104-preview.mp3', // Tension
-    lobbyMusic: 'https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3',
-    victory: SHARED_VICTORY,
-  },
-  silly: {
-    roll: SHARED_ROLL,
-    bank: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
-    bust: [
-      'https://assets.mixkit.co/active_storage/sfx/470/470-preview.mp3', // Sad trombone
-      'https://assets.mixkit.co/active_storage/sfx/2953/2953-preview.mp3', // Wrong
-      'https://assets.mixkit.co/active_storage/sfx/2954/2954-preview.mp3', // Failure
-    ],
-    doubles: 'https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3',
-    lucky7: 'https://assets.mixkit.co/active_storage/sfx/2021/2021-preview.mp3',
-    gameOver: 'https://assets.mixkit.co/active_storage/sfx/1432/1432-preview.mp3',
-    danger: 'https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3',
-    lobbyMusic: 'https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3',
-    victory: SHARED_VICTORY,
-  },
+// All unique bust sounds consolidated for random selection
+const ALL_BUST_SOUNDS = [
+  'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3', // Negative fail
+  'https://assets.mixkit.co/active_storage/sfx/470/470-preview.mp3',   // Sad trombone
+  'https://assets.mixkit.co/active_storage/sfx/2953/2953-preview.mp3', // Wrong answer
+  'https://assets.mixkit.co/active_storage/sfx/2954/2954-preview.mp3', // Failure
+]
+
+const SOUNDS: ThemeSounds = {
+  roll: SHARED_ROLL,
+  bank: 'https://soundbible.com/grab.php?id=333&type=mp3',
+  bust: ALL_BUST_SOUNDS,
+  doubles: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
+  lucky7: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3',
+  gameOver: 'https://assets.mixkit.co/active_storage/sfx/2658/2658-preview.mp3',
+  danger: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+  lobbyMusic: LOBBY_MUSIC,
+  victory: SHARED_VICTORY,
 }
+
+// Keep type export for backward compatibility but it's no longer used
+export type SoundTheme = 'classic'
 
 export type SoundEffect = 'roll' | 'bank' | 'bust' | 'doubles' | 'lucky7' | 'gameOver' | 'danger' | 'lobbyMusic' | 'victory'
 
@@ -134,11 +96,10 @@ function playAudioElement(url: string, volume: number): void {
   }
 }
 
-// Sound manager class with theme support
+// Sound manager class (simplified - no theme selection)
 class SoundManager {
   private enabled: boolean = true
   private volume: number = 0.5
-  private theme: SoundTheme = 'classic'
   private lobbyAudio: HTMLAudioElement | null = null
   private initialized: boolean = false
 
@@ -148,10 +109,6 @@ class SoundManager {
       this.enabled = saved !== 'false'
       const savedVol = localStorage.getItem('soundVolume')
       if (savedVol) this.volume = parseFloat(savedVol)
-      const savedTheme = localStorage.getItem('soundTheme') as SoundTheme
-      if (savedTheme && SOUND_THEMES[savedTheme]) {
-        this.theme = savedTheme
-      }
     }
   }
 
@@ -161,10 +118,9 @@ class SoundManager {
     this.initialized = true
 
     // Pre-load common sounds by creating Audio elements
-    const themeSounds = SOUND_THEMES[this.theme]
-    getAudioElement(themeSounds.roll, this.volume)
-    getAudioElement(themeSounds.bank, this.volume)
-    getAudioElement(themeSounds.doubles, this.volume)
+    getAudioElement(SOUNDS.roll, this.volume)
+    getAudioElement(SOUNDS.bank, this.volume)
+    getAudioElement(SOUNDS.doubles, this.volume)
   }
 
   play(effect: SoundEffect): void {
@@ -175,15 +131,13 @@ class SoundManager {
     this.unlock()
 
     try {
-      const themeSounds = SOUND_THEMES[this.theme]
       let url: string
 
       if (effect === 'bust') {
         // Random bust sound from array
-        const bustSounds = themeSounds.bust
-        url = bustSounds[Math.floor(Math.random() * bustSounds.length)]
+        url = SOUNDS.bust[Math.floor(Math.random() * SOUNDS.bust.length)]
       } else {
-        url = themeSounds[effect]
+        url = SOUNDS[effect]
       }
 
       if (!url) return
@@ -199,12 +153,11 @@ class SoundManager {
     if (typeof window === 'undefined') return
 
     try {
-      const themeSounds = SOUND_THEMES[this.theme]
       let url: string
 
       if (effect === 'bust') {
         // Stop all bust sounds
-        themeSounds.bust.forEach(bustUrl => {
+        SOUNDS.bust.forEach(bustUrl => {
           const pool = audioPool.get(bustUrl)
           if (pool) {
             pool.forEach(audio => {
@@ -215,28 +168,21 @@ class SoundManager {
         })
         return
       } else {
-        url = themeSounds[effect]
+        url = SOUNDS[effect]
       }
 
-      if (!url) {
-        console.log('[SoundManager] stop: no URL for effect', effect)
-        return
-      }
-
-      console.log('[SoundManager] stop: stopping', effect, 'url:', url)
+      if (!url) return
 
       // Stop all audio elements for this URL
       const pool = audioPool.get(url)
-      console.log('[SoundManager] stop: pool found:', !!pool, 'size:', pool?.length)
       if (pool) {
         pool.forEach(audio => {
-          console.log('[SoundManager] stop: pausing audio, paused:', audio.paused)
           audio.pause()
           audio.currentTime = 0
         })
       }
     } catch (e) {
-      console.error('[SoundManager] stop error:', e)
+      // Ignore errors
     }
   }
 
@@ -248,7 +194,7 @@ class SoundManager {
     this.unlock()
 
     try {
-      const url = SOUND_THEMES[this.theme].lobbyMusic
+      const url = SOUNDS.lobbyMusic
       if (!url) return Promise.resolve(false)
 
       if (this.lobbyAudio) {
@@ -305,23 +251,17 @@ class SoundManager {
     return this.volume
   }
 
-  setTheme(theme: SoundTheme): void {
-    if (SOUND_THEMES[theme]) {
-      this.theme = theme
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('soundTheme', theme)
-      }
-      // Clear audio pool when theme changes to load new sounds
-      audioPool.clear()
-    }
+  // Keep these methods for backward compatibility but they're no-ops now
+  setTheme(_theme: SoundTheme): void {
+    // No-op - single theme only
   }
 
   getTheme(): SoundTheme {
-    return this.theme
+    return 'classic'
   }
 
   getAvailableThemes(): SoundTheme[] {
-    return Object.keys(SOUND_THEMES) as SoundTheme[]
+    return ['classic']
   }
 }
 

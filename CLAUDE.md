@@ -71,6 +71,7 @@ User Action → API Route → Pure Game Logic → New State → Supabase → Pol
 - `POST /api/rooms/[roomId]/start` - Start game (host only, min 2 players)
 - `POST /api/rooms/[roomId]/roll` - Roll dice
 - `POST /api/rooms/[roomId]/bank` - Bank points
+- `POST /api/rooms/[roomId]/restart` - Restart game in same room (caller becomes new host)
 
 **Client Synchronization** (`app/room/[roomId]/page.tsx`):
 - Polls every 2 seconds
@@ -108,7 +109,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
 ### Type System (`lib/types.ts`)
 
-- `GameState` - Complete game state including timestamps (`bustAt`, `roundWinnerAt`), `lastRollerIndex`, `lastBankedPlayer`, `lastBankedAt`
+- `GameState` - Complete game state including timestamps (`bustAt`, `roundWinnerAt`), `lastRollerIndex`, `lastBankedPlayer`, `lastBankedAt`, `stats`
+- `GameStats` - End-game statistics tracking: doublesCount, bustCount, sevensInHazard, biggestRound, totalRolls, comebackKing
 - `Player` - Score, banking state, `pointsEarnedThisRound`
 - `RollEffect` - effectType: 'add' | 'add70' | 'doubleBank' | 'bust' | 'none'
 - `RollHistoryEntry`, `RoundHistoryEntry` - History tracking
@@ -159,25 +161,29 @@ Database schema in `supabase/schema.sql`.
 
 `lib/sounds.ts` manages audio playback with `soundManager` singleton:
 
-**Sound Themes:** Four selectable themes (classic, arcade, casino, silly) with different sound sets for each effect. Theme selection in lobby.
+**Audio Implementation:** Uses HTMLAudioElement with pooling (up to 5 elements per URL) for concurrent sound playback. Avoids Web Audio API due to CORS issues with external audio URLs.
 
-**Shared Sounds:** Roll sound is unified across all themes (SoundBible dice roll). Victory music uses local file `/sounds/victory.mp3`.
+**Simplified Sound System:** Single consolidated sound set (no theme selection). Bust sounds randomly selected from pool of 4 different sounds.
 
-**Local Sound Files:** `public/sounds/` contains locally hosted audio files for reliable playback (e.g., victory.mp3).
+**Local Sound Files:** `public/sounds/` contains locally hosted audio files:
+- `victory.mp3` - Awards ceremony winner music
+- `lobby.mp3` - User-provided lobby music (download from Udio)
+
+**Stop Method:** `soundManager.stop(effect)` stops all playing instances of a sound effect (used when restarting game to stop victory music).
 
 **Sound Effects:**
-- **roll** - Dice shaking sound (shared across all themes)
+- **roll** - Dice shaking sound (SoundBible)
 - **bank** - Cash register cha-ching
-- **bust** - Random selection from array of bust sounds (sad trombone, fail, etc.)
+- **bust** - Random selection from 4 bust sounds (sad trombone, fail, wrong, etc.)
 - **doubles** - Bonus win sound
 - **lucky7** - Jackpot sound for 7 in first 3 rolls
 - **danger** - Warning alert when entering roll #4 (risky phase)
 - **lobbyMusic** - Background music in waiting room (loops, quieter volume)
 - **victory** - Epic celebration music when game ends
 
-**Lobby Music:** Requires user click on "Play Lobby Music" button due to browser autoplay policies. Toggle button shows current state.
+**Lobby Music:** Requires user click on "Music" toggle button due to browser autoplay policies.
 
-**Test Page:** `/test-sounds` page for debugging all sound URLs across themes. Shows status (idle/playing/success/error) for each sound.
+**Test Page:** `/test-sounds` page for debugging all sound URLs. Shows status (idle/playing/success/error) for each sound.
 
 `hooks/useSounds.ts` provides React hook. Sounds are played in page.tsx handlers and also triggered for other players' rolls via polling.
 
@@ -199,10 +205,16 @@ Database schema in `supabase/schema.sql`.
 
 **Victory Celebration:** When game ends, displays confetti animation (`Confetti` component) and plays victory music. Header "Bank It" logo links to home page.
 
-**Responsive Design:** Dice size adapts to screen width (70px on mobile, 100px on desktop). Status bar wraps on narrow screens. `useIsMobile` hook in ActionPanel detects screen width.
+**Responsive Design:** Dice size adapts to screen width (70px under 500px, 100px on desktop). Status bar wraps on narrow screens. `useIsMobile` hook in ActionPanel detects screen width.
 
 ### Game Setup
 
 **Round Presets:** Create game modal offers Short (5), Medium (20), Long (40), or Custom rounds with slider (3-50).
 
-**Replay:** "Play Again" button on game completion screen returns to home page.
+**Play Again Flow:** Two buttons on game completion:
+- **Play Again** - Restarts game in same room with same code. First player to click becomes new host; other players see join form (nickname pre-filled from localStorage). Uses `gameStore.restartRoom()`.
+- **New Room** - Returns to home page to create a fresh room.
+
+### Assets
+
+**Favicon:** `app/icon.svg` and `app/apple-icon.svg` - Lime green dice showing 5-face pattern, matches brand-lime color (#A3E635).

@@ -163,6 +163,38 @@ class GameStore {
     return player?.playerId
   }
 
+  async updateSettings(roomId: string, playerId: string, totalRounds: number): Promise<{ success: boolean; error?: string }> {
+    const room = await this.getRoom(roomId)
+    if (!room) return { success: false, error: 'Room not found' }
+    if (room.started) return { success: false, error: 'Game has already started' }
+    if (room.hostPlayerId !== playerId) return { success: false, error: 'Only the host can change settings' }
+
+    // Update totalRounds in both room and gameState
+    const updatedGameState = {
+      ...room.gameState,
+      totalRounds,
+    }
+
+    const { error } = await supabase
+      .from('rooms')
+      .update({
+        total_rounds: totalRounds,
+        game_state: {
+          ...updatedGameState,
+          _players: Object.fromEntries(room.players),
+        },
+      })
+      .eq('id', roomId)
+
+    if (error) {
+      console.error('[GameStore] Error updating settings:', error)
+      return { success: false, error: 'Failed to update settings' }
+    }
+
+    console.log(`[GameStore] Updated room ${roomId} to ${totalRounds} rounds`)
+    return { success: true }
+  }
+
   async restartRoom(roomId: string, newHostPlayerId: string, newHostNickname: string): Promise<{ success: boolean; error?: string }> {
     const room = await this.getRoom(roomId)
     if (!room) return { success: false, error: 'Room not found' }

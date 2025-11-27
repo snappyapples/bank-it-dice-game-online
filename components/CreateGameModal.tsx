@@ -12,8 +12,8 @@ type RoundPreset = 'short' | 'medium' | 'long' | 'custom'
 
 const ROUND_PRESETS: Record<RoundPreset, { label: string; rounds: number | null }> = {
   short: { label: 'Short', rounds: 5 },
-  medium: { label: 'Medium', rounds: 20 },
-  long: { label: 'Long', rounds: 40 },
+  medium: { label: 'Medium', rounds: 15 },
+  long: { label: 'Long', rounds: 30 },
   custom: { label: 'Custom', rounds: null },
 }
 
@@ -32,7 +32,7 @@ function getOrCreatePlayerId(): string {
 export default function CreateGameModal({ isOpen, onClose }: CreateGameModalProps) {
   const router = useRouter()
   const [nickname, setNickname] = useState('')
-  const [selectedPreset, setSelectedPreset] = useState<RoundPreset>('short')
+  const [selectedPreset, setSelectedPreset] = useState<RoundPreset>('medium')
   const [customRounds, setCustomRounds] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')

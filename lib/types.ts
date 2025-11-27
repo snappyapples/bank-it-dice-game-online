@@ -43,6 +43,15 @@ export interface RoundHistoryEntry {
 
 export type GamePhase = 'lobby' | 'inRound' | 'betweenRounds' | 'bust' | 'roundWinner' | 'finished'
 
+export interface GameStats {
+  doublesCount: Record<PlayerId, number>
+  bustCount: Record<PlayerId, number>
+  sevensInHazard: Record<PlayerId, number>
+  biggestRound: { player: string; points: number; round: number } | null
+  totalRolls: Record<PlayerId, number>
+  comebackKing: { player: string; deficit: number } | null
+}
+
 export interface GameState {
   players: Player[]
   roundNumber: number
@@ -58,4 +67,5 @@ export interface GameState {
   lastRollerIndex?: number // Track who was rolling when round ended (for next round start)
   lastBankedPlayer?: string // Nickname of the last player who banked (for overlay display)
   lastBankedAt?: number // Timestamp when last player banked
+  stats?: GameStats // Game statistics for end-game awards
 }

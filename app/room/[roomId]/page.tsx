@@ -7,9 +7,10 @@ import ActionPanel from '@/components/ActionPanel'
 import RollHistoryPanel from '@/components/RollHistoryPanel'
 import RoundHistoryPanel from '@/components/RoundHistoryPanel'
 import Confetti from '@/components/Confetti'
+import GameStats from '@/components/GameStats'
 import { GameState } from '@/lib/types'
 import { useSounds } from '@/hooks/useSounds'
-import { soundManager, SoundTheme } from '@/lib/sounds'
+import { soundManager } from '@/lib/sounds'
 
 function getPlayerId(): string {
   if (typeof window === 'undefined') return ''
@@ -30,8 +31,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const [lastRollId, setLastRollId] = useState<string | null>(null)
   const [showBankOverlay, setShowBankOverlay] = useState(false)
   const [lastBanker, setLastBanker] = useState('')
+  const [lastBankedAmount, setLastBankedAmount] = useState(0)
+  const [lastBankedLeaderInfo, setLastBankedLeaderInfo] = useState<{ leader: string; deficit: number } | null>(null)
   const [showCopiedOverlay, setShowCopiedOverlay] = useState(false)
-  const [soundTheme, setSoundTheme] = useState<SoundTheme>('classic')
+  const [showTurnPopup, setShowTurnPopup] = useState(false)
   const [lobbyMusicStarted, setLobbyMusicStarted] = useState(false)
   const [needsToJoin, setNeedsToJoin] = useState(false)
   const [joinNickname, setJoinNickname] = useState('')
@@ -53,15 +56,19 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const isRollingRef = useRef(false)
   const pendingGameStateRef = useRef<GameState | null>(null)
   const lastBankedAtRef = useRef<number | undefined>(undefined)
+  const bankPanelRef = useRef<HTMLDivElement>(null)
+  const gameStatsRef = useRef<HTMLDivElement>(null)
+  const prevRoundRef = useRef<number>(1)
+  const prevRollerRef = useRef<string | null>(null)
+  const gameFinishedScrolledRef = useRef(false)
 
   // Keep refs in sync with state
   useEffect(() => { lastRollIdRef.current = lastRollId }, [lastRollId])
   useEffect(() => { isRollingRef.current = isRolling }, [isRolling])
   useEffect(() => { pendingGameStateRef.current = pendingGameState }, [pendingGameState])
 
-  // Initialize sound theme and load saved nickname
+  // Load saved nickname
   useEffect(() => {
-    setSoundTheme(soundManager.getTheme())
     const savedNickname = localStorage.getItem('nickname')
     if (savedNickname) {
       setJoinNickname(savedNickname)
@@ -165,9 +172,26 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         // Check for banking overlay
         if (data.gameState?.lastBankedAt && data.gameState.lastBankedAt !== lastBankedAtRef.current) {
           lastBankedAtRef.current = data.gameState.lastBankedAt
-          setLastBanker(data.gameState.lastBankedPlayer || '')
+          const bankerName = data.gameState.lastBankedPlayer || ''
+          setLastBanker(bankerName)
+
+          // Get banker info for enhanced popup
+          const banker = data.gameState.players.find((p: { nickname: string }) => p.nickname === bankerName)
+          if (banker) {
+            setLastBankedAmount(banker.pointsEarnedThisRound)
+
+            // Calculate leader info
+            const maxScore = Math.max(...data.gameState.players.map((p: { score: number }) => p.score))
+            const leader = data.gameState.players.find((p: { score: number }) => p.score === maxScore)
+            if (leader && banker.score < maxScore) {
+              setLastBankedLeaderInfo({ leader: leader.nickname, deficit: maxScore - banker.score })
+            } else {
+              setLastBankedLeaderInfo(null) // Banker is the leader
+            }
+          }
+
           setShowBankOverlay(true)
-          setTimeout(() => setShowBankOverlay(false), 2000)
+          setTimeout(() => setShowBankOverlay(false), 2500) // Slightly longer for more info
           // Play bank sound for other players' banks
           soundManager.play('bank')
         }
@@ -243,13 +267,38 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     return () => clearInterval(interval)
   }, [roomId])
 
-  // Reset isRolling when round changes
+  // Reset isRolling when round changes and scroll to bank panel on mobile
   useEffect(() => {
     if (gameState && gameState.roundNumber !== currentRound) {
       setIsRolling(false)
       setCurrentRound(gameState.roundNumber)
+
+      // Auto-scroll to bank panel on round start (mobile only)
+      if (typeof window !== 'undefined' && window.innerWidth < 640 && bankPanelRef.current) {
+        setTimeout(() => {
+          bankPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 500) // Small delay to let round winner card disappear
+      }
     }
   }, [gameState, currentRound])
+
+  // Detect when it becomes current player's turn and show popup
+  useEffect(() => {
+    if (!gameState || gameState.phase !== 'inRound') return
+
+    const currentPlayerNickname = localStorage.getItem('nickname') || ''
+    const currentPlayerGameId = gameState.players.find(p => p.nickname === currentPlayerNickname)?.id
+    const isNowRoller = gameState.players.find(p => p.id === currentPlayerGameId)?.isCurrentRoller || false
+    const currentRollerId = gameState.players.find(p => p.isCurrentRoller)?.id || null
+
+    // Check if roller changed and it's now this player's turn
+    if (isNowRoller && currentRollerId !== prevRollerRef.current && prevRollerRef.current !== null) {
+      setShowTurnPopup(true)
+      setTimeout(() => setShowTurnPopup(false), 2500)
+    }
+
+    prevRollerRef.current = currentRollerId
+  }, [gameState])
 
 
   const handleStartGame = async () => {
@@ -264,6 +313,26 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start game')
+    }
+  }
+
+  const handleRoundsChange = async (rounds: number) => {
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: localStorage.getItem('playerId'),
+          totalRounds: rounds,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to update settings')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update settings')
     }
   }
 
@@ -451,12 +520,6 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     }
   }
 
-  const handleThemeChange = (theme: SoundTheme) => {
-    soundManager.setTheme(theme)
-    setSoundTheme(theme)
-    // Music keeps playing - no restart needed
-  }
-
   // Determine if game is finished (for victory sound hook - must be before early returns)
   const isGameFinished = gameState?.phase === 'finished'
 
@@ -469,6 +532,21 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       // Game was restarted (by any player) - stop victory music
       soundManager.stop('victory')
       victoryPlayedRef.current = false
+    }
+  }, [isGameFinished])
+
+  // Auto-scroll to game stats after game ends (mobile only)
+  useEffect(() => {
+    if (isGameFinished && !gameFinishedScrolledRef.current) {
+      gameFinishedScrolledRef.current = true
+      // Delay scroll to let confetti play and user see winner
+      if (typeof window !== 'undefined' && window.innerWidth < 640 && gameStatsRef.current) {
+        setTimeout(() => {
+          gameStatsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 3000)
+      }
+    } else if (!isGameFinished) {
+      gameFinishedScrolledRef.current = false
     }
   }, [isGameFinished])
 
@@ -627,27 +705,63 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               </div>
             </div>
 
-            {/* Sound Theme Selection */}
+            {/* Game Settings - Rounds */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold mb-3 text-gray-400 uppercase tracking-wider">Game Settings</h3>
+              {isHost ? (
+                <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-gray-300">Rounds</span>
+                    <span className="text-2xl font-bold text-brand-lime">{gameState.totalRounds}</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[5, 15, 30].map((rounds) => (
+                      <button
+                        key={rounds}
+                        onClick={() => handleRoundsChange(rounds)}
+                        className={`py-2 px-3 rounded-lg font-medium text-sm transition-all ${
+                          gameState.totalRounds === rounds
+                            ? 'bg-brand-lime text-black'
+                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        }`}
+                      >
+                        {rounds}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const custom = prompt('Enter number of rounds (3-50):', String(gameState.totalRounds))
+                        if (custom) {
+                          const num = parseInt(custom)
+                          if (num >= 3 && num <= 50) {
+                            handleRoundsChange(num)
+                          }
+                        }
+                      }}
+                      className={`py-2 px-3 rounded-lg font-medium text-sm transition-all ${
+                        ![5, 15, 30].includes(gameState.totalRounds)
+                          ? 'bg-brand-lime text-black'
+                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      Custom
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
+                  <span className="text-gray-300">Rounds</span>
+                  <span className="text-2xl font-bold text-brand-lime">{gameState.totalRounds}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Lobby Music Toggle */}
             <div>
-              <h3 className="text-sm font-semibold mb-3 text-gray-400 uppercase tracking-wider">Sound Theme</h3>
-              <div className="grid grid-cols-4 gap-2">
-                {soundManager.getAvailableThemes().map((theme) => (
-                  <button
-                    key={theme}
-                    onClick={() => handleThemeChange(theme)}
-                    className={`py-2 px-3 rounded-lg font-medium text-sm capitalize transition-all ${
-                      soundTheme === theme
-                        ? 'bg-brand-purple text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
-                    {theme}
-                  </button>
-                ))}
-              </div>
+              <h3 className="text-sm font-semibold mb-3 text-gray-400 uppercase tracking-wider">Music</h3>
               <button
                 onClick={handleToggleLobbyMusic}
-                className={`mt-3 w-full py-2 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
+                className={`w-full py-2 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
                   lobbyMusicStarted
                     ? 'bg-brand-teal text-white'
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
@@ -729,10 +843,23 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       {/* Banking Overlay */}
       {showBankOverlay && lastBanker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-brand-teal/90 text-white px-8 py-4 rounded-2xl shadow-2xl animate-bank-flash">
-            <div className="text-3xl font-bold text-center">
+          <div className="bg-brand-teal/90 text-white px-6 sm:px-8 py-4 sm:py-6 rounded-2xl shadow-2xl animate-bank-flash max-w-[90vw]">
+            <div className="text-2xl sm:text-3xl font-bold text-center mb-2">
               💰 {lastBanker} banked!
             </div>
+            <div className="text-xl sm:text-2xl font-semibold text-center text-brand-lime">
+              +{lastBankedAmount} points
+            </div>
+            {lastBankedLeaderInfo && (
+              <div className="text-sm sm:text-base text-center mt-2 text-white/80">
+                {lastBankedLeaderInfo.deficit} behind {lastBankedLeaderInfo.leader}
+              </div>
+            )}
+            {!lastBankedLeaderInfo && lastBankedAmount > 0 && (
+              <div className="text-sm sm:text-base text-center mt-2 text-yellow-300 font-medium">
+                Now in the lead!
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -748,6 +875,20 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         </div>
       )}
 
+      {/* It's Your Turn Popup */}
+      {showTurnPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-brand-purple/95 text-white px-6 sm:px-8 py-4 sm:py-6 rounded-2xl shadow-2xl animate-bank-flash">
+            <div className="text-2xl sm:text-3xl font-bold text-center mb-1">
+              🎲 Your Turn!
+            </div>
+            <div className="text-sm sm:text-base text-center text-white/80">
+              Roll the dice
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confetti for winner */}
       {isGameFinished && <Confetti />}
 
@@ -755,29 +896,36 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       <div className="max-w-7xl mx-auto">
         {/* Winner Announcement */}
         {isGameFinished && (
-          <div className="mb-6 bg-gradient-to-r from-brand-lime/20 via-brand-teal/20 to-brand-purple/20 border-2 border-brand-lime rounded-lg shadow-2xl p-8 text-center backdrop-blur-sm animate-winner-glow">
-            <div className="text-6xl mb-4">🏆</div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider mb-2">Winner is:</div>
-            <div className="text-5xl font-bold text-brand-lime mb-2">{winnerText}</div>
-            <div className="text-2xl text-gray-300 mb-6">Final Score: {maxScore}</div>
-            <div className="flex gap-4 justify-center flex-wrap">
-              <button
-                onClick={handlePlayAgain}
-                className="px-8 py-3 bg-brand-lime text-black font-bold rounded-full text-lg hover:bg-brand-lime/90 transition-all hover:scale-105"
-              >
-                Play Again
-              </button>
-              <button
-                onClick={() => {
-                  soundManager.stop('victory')
-                  window.location.href = '/'
-                }}
-                className="px-8 py-3 bg-gray-700 text-white font-bold rounded-full text-lg hover:bg-gray-600 transition-all hover:scale-105"
-              >
-                New Room
-              </button>
+          <>
+            <div className="mb-6 bg-gradient-to-r from-brand-lime/20 via-brand-teal/20 to-brand-purple/20 border-2 border-brand-lime rounded-lg shadow-2xl p-8 text-center backdrop-blur-sm animate-winner-glow">
+              <div className="text-6xl mb-4">🏆</div>
+              <div className="text-sm text-gray-400 uppercase tracking-wider mb-2">Winner is:</div>
+              <div className="text-5xl font-bold text-brand-lime mb-2">{winnerText}</div>
+              <div className="text-2xl text-gray-300 mb-6">Final Score: {maxScore}</div>
+              <div className="flex gap-4 justify-center flex-wrap">
+                <button
+                  onClick={handlePlayAgain}
+                  className="px-8 py-3 bg-brand-lime text-black font-bold rounded-full text-lg hover:bg-brand-lime/90 transition-all hover:scale-105"
+                >
+                  Play Again
+                </button>
+                <button
+                  onClick={() => {
+                    soundManager.stop('victory')
+                    window.location.href = '/'
+                  }}
+                  className="px-8 py-3 bg-gray-700 text-white font-bold rounded-full text-lg hover:bg-gray-600 transition-all hover:scale-105"
+                >
+                  New Room
+                </button>
+              </div>
             </div>
-          </div>
+
+            {/* Game Awards */}
+            <div ref={gameStatsRef} className="mb-6">
+              <GameStats gameState={gameState} />
+            </div>
+          </>
         )}
 
         {/* Bust Announcement */}
@@ -795,25 +943,51 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
         {/* Round Winner Announcement */}
         {isRoundWinnerPhase && (
-          <div className="mb-6 bg-gradient-to-r from-yellow-900/30 via-yellow-800/20 to-yellow-900/30 border-2 border-yellow-500 rounded-lg shadow-2xl p-8 text-center backdrop-blur-sm animate-slide-in">
-            <div className="text-6xl mb-4">{roundWinnerPoints === 0 ? '😅' : '🎯'}</div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider mb-2">Round {gameState.roundNumber}</div>
+          <div className="mb-6 bg-gradient-to-r from-yellow-900/30 via-yellow-800/20 to-yellow-900/30 border-2 border-yellow-500 rounded-lg shadow-2xl p-4 sm:p-8 text-center backdrop-blur-sm animate-slide-in">
+            <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">{roundWinnerPoints === 0 ? '😅' : '🎯'}</div>
+            <div className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider mb-2">Round {gameState.roundNumber}</div>
             {roundWinnerPoints === 0 ? (
-              <div className="text-4xl font-bold text-yellow-500 mb-2">Nobody won this round!</div>
+              <div className="text-2xl sm:text-4xl font-bold text-yellow-500 mb-2">Nobody won this round!</div>
             ) : (
               <>
-                <div className="text-5xl font-bold text-yellow-500 mb-2">{roundWinnerText}</div>
-                <div className="text-xl text-gray-300">
+                <div className="text-3xl sm:text-5xl font-bold text-yellow-500 mb-2">{roundWinnerText}</div>
+                <div className="text-lg sm:text-xl text-gray-300">
                   Earned <span className="font-bold text-yellow-500">{roundWinnerPoints}</span> points this round!
                 </div>
               </>
             )}
-            <div className="text-gray-400 mt-4 text-sm">Next round starting soon...</div>
+
+            {/* Compact Leaderboard */}
+            <div className="mt-4 pt-4 border-t border-yellow-500/30">
+              <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Standings</div>
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+                {[...gameState.players]
+                  .sort((a, b) => b.score - a.score)
+                  .map((player, index) => {
+                    const isLeader = index === 0
+                    return (
+                      <div
+                        key={player.id}
+                        className={`px-3 py-1.5 rounded-lg text-sm ${
+                          isLeader
+                            ? 'bg-yellow-500/20 border border-yellow-500 text-yellow-400'
+                            : 'bg-gray-800/50 border border-gray-700 text-gray-300'
+                        }`}
+                      >
+                        <span className="font-medium">{player.nickname}</span>
+                        <span className="ml-2 font-bold">{player.score}</span>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+
+            <div className="text-gray-400 mt-4 text-xs sm:text-sm">Next round starting soon...</div>
           </div>
         )}
 
         {/* Bank Panel */}
-        <div className="mb-6">
+        <div ref={bankPanelRef} className="mb-6 scroll-mt-4">
           <BankPanel
             gameState={gameState}
             lastRoll={gameState.lastRoll}

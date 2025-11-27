@@ -1,4 +1,4 @@
-import { GameState, Player, RollEffect, RollHistoryEntry } from './types'
+import { GameState, GameStats, Player, RollEffect, RollHistoryEntry } from './types'
 
 /**
  * Roll two dice and return the results
@@ -27,6 +27,16 @@ export function initGame(playerNicknames: string[], totalRounds: number): GameSt
     pointsEarnedThisRound: 0,
   }))
 
+  // Initialize stats tracking
+  const stats: GameStats = {
+    doublesCount: Object.fromEntries(players.map(p => [p.id, 0])),
+    bustCount: Object.fromEntries(players.map(p => [p.id, 0])),
+    sevensInHazard: Object.fromEntries(players.map(p => [p.id, 0])),
+    biggestRound: null,
+    totalRolls: Object.fromEntries(players.map(p => [p.id, 0])),
+    comebackKing: null,
+  }
+
   return {
     players,
     roundNumber: 1,
@@ -36,6 +46,7 @@ export function initGame(playerNicknames: string[], totalRounds: number): GameSt
     lastRoll: undefined,
     history: [],
     roundHistory: [],
+    stats,
   }
 }
 
@@ -169,12 +180,49 @@ export function applyRoll(state: GameState): GameState {
     bankAmount: newBankValue,
   }
 
+  // Update stats
+  const updatedStats: GameStats = state.stats ? { ...state.stats } : {
+    doublesCount: {},
+    bustCount: {},
+    sevensInHazard: {},
+    biggestRound: null,
+    totalRolls: {},
+    comebackKing: null,
+  }
+
+  // Track total rolls for this player
+  updatedStats.totalRolls = {
+    ...updatedStats.totalRolls,
+    [currentPlayer.id]: (updatedStats.totalRolls[currentPlayer.id] || 0) + 1,
+  }
+
+  // Track doubles (in hazard mode - roll 4+)
+  if (effect.wasDouble && newRollCount > 3) {
+    updatedStats.doublesCount = {
+      ...updatedStats.doublesCount,
+      [currentPlayer.id]: (updatedStats.doublesCount[currentPlayer.id] || 0) + 1,
+    }
+  }
+
+  // Track 7s in hazard mode (bust)
+  if (busted && newRollCount > 3) {
+    updatedStats.sevensInHazard = {
+      ...updatedStats.sevensInHazard,
+      [currentPlayer.id]: (updatedStats.sevensInHazard[currentPlayer.id] || 0) + 1,
+    }
+    updatedStats.bustCount = {
+      ...updatedStats.bustCount,
+      [currentPlayer.id]: (updatedStats.bustCount[currentPlayer.id] || 0) + 1,
+    }
+  }
+
   const newState: GameState = {
     ...state,
     bankValue: newBankValue,
     rollCountThisRound: newRollCount,
     lastRoll: effect,
     history: [...state.history, historyEntry],
+    stats: updatedStats,
   }
 
   // If busted, end the round immediately
@@ -199,6 +247,10 @@ export function applyBank(state: GameState, playerId: string): GameState {
   // Capture the current roller's index BEFORE modifying state
   const currentRollerIndex = state.players.findIndex((p) => p.isCurrentRoller)
 
+  // Calculate deficit before banking (for comeback tracking)
+  const maxScoreBefore = Math.max(...state.players.map(p => p.score))
+  const deficitBefore = maxScoreBefore - player.score
+
   // Add bank value to player's score
   const updatedPlayers = state.players.map((p) =>
     p.id === playerId
@@ -212,11 +264,51 @@ export function applyBank(state: GameState, playerId: string): GameState {
       : p
   )
 
+  // Update stats for biggestRound and comebackKing
+  const pointsThisRound = player.pointsEarnedThisRound + state.bankValue
+  let updatedStats = state.stats ? { ...state.stats } : {
+    doublesCount: {},
+    bustCount: {},
+    sevensInHazard: {},
+    biggestRound: null,
+    totalRolls: {},
+    comebackKing: null,
+  }
+
+  // Track biggest round
+  if (!updatedStats.biggestRound || pointsThisRound > updatedStats.biggestRound.points) {
+    updatedStats = {
+      ...updatedStats,
+      biggestRound: {
+        player: player.nickname,
+        points: pointsThisRound,
+        round: state.roundNumber,
+      },
+    }
+  }
+
+  // Track comeback king - if player was behind and banked enough to take lead
+  const newScore = player.score + state.bankValue
+  const newMaxScore = Math.max(...updatedPlayers.map(p => p.score))
+  if (deficitBefore > 0 && newScore >= newMaxScore) {
+    // Player overcame a deficit to take/tie the lead
+    if (!updatedStats.comebackKing || deficitBefore > updatedStats.comebackKing.deficit) {
+      updatedStats = {
+        ...updatedStats,
+        comebackKing: {
+          player: player.nickname,
+          deficit: deficitBefore,
+        },
+      }
+    }
+  }
+
   let newState: GameState = {
     ...state,
     players: updatedPlayers,
     lastBankedPlayer: player.nickname,
     lastBankedAt: Date.now(),
+    stats: updatedStats,
   }
 
   // Check if all players have banked
