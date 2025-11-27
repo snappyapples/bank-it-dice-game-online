@@ -56,19 +56,37 @@ export default function GameStats({ gameState }: GameStatsProps) {
     }
   }
 
-  // Most 7s in Hazard Mode
-  const sevensEntries = Object.entries(stats.sevensInHazard)
-  if (sevensEntries.length > 0) {
-    const maxSevens = Math.max(...sevensEntries.map(([, count]) => count))
-    if (maxSevens > 0) {
-      const winnerId = sevensEntries.find(([, count]) => count === maxSevens)?.[0]
+  // Risk Taker - most rolls in hazard mode
+  const hazardEntries = Object.entries(stats.hazardRolls)
+  if (hazardEntries.length > 0) {
+    const maxHazard = Math.max(...hazardEntries.map(([, count]) => count))
+    if (maxHazard > 0) {
+      const winnerId = hazardEntries.find(([, count]) => count === maxHazard)?.[0]
       const winner = players.find(p => p.id === winnerId)
       if (winner) {
         awards.push({
           icon: '🎯',
           title: 'Risk Taker',
           player: winner.nickname,
-          value: `${maxSevens} hazard 7s`,
+          value: `${maxHazard} hazard rolls`,
+        })
+      }
+    }
+  }
+
+  // Safe Player - most early banks (before hazard mode)
+  const earlyBankEntries = Object.entries(stats.earlyBanks)
+  if (earlyBankEntries.length > 0) {
+    const maxEarlyBanks = Math.max(...earlyBankEntries.map(([, count]) => count))
+    if (maxEarlyBanks > 0) {
+      const winnerId = earlyBankEntries.find(([, count]) => count === maxEarlyBanks)?.[0]
+      const winner = players.find(p => p.id === winnerId)
+      if (winner) {
+        awards.push({
+          icon: '🛡️',
+          title: 'Safe Player',
+          player: winner.nickname,
+          value: `${maxEarlyBanks} early banks`,
         })
       }
     }

@@ -46,7 +46,8 @@ export type GamePhase = 'lobby' | 'inRound' | 'betweenRounds' | 'bust' | 'roundW
 export interface GameStats {
   doublesCount: Record<PlayerId, number>
   bustCount: Record<PlayerId, number>
-  sevensInHazard: Record<PlayerId, number>
+  hazardRolls: Record<PlayerId, number>  // Rolls made in hazard mode (roll 4+)
+  earlyBanks: Record<PlayerId, number>   // Times banked before hazard mode (rolls 1-3)
   biggestRound: { player: string; points: number; round: number } | null
   totalRolls: Record<PlayerId, number>
   comebackKing: { player: string; deficit: number } | null

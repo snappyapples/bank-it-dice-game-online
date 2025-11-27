@@ -31,7 +31,8 @@ export function initGame(playerNicknames: string[], totalRounds: number): GameSt
   const stats: GameStats = {
     doublesCount: Object.fromEntries(players.map(p => [p.id, 0])),
     bustCount: Object.fromEntries(players.map(p => [p.id, 0])),
-    sevensInHazard: Object.fromEntries(players.map(p => [p.id, 0])),
+    hazardRolls: Object.fromEntries(players.map(p => [p.id, 0])),
+    earlyBanks: Object.fromEntries(players.map(p => [p.id, 0])),
     biggestRound: null,
     totalRolls: Object.fromEntries(players.map(p => [p.id, 0])),
     comebackKing: null,
@@ -184,7 +185,8 @@ export function applyRoll(state: GameState): GameState {
   const updatedStats: GameStats = state.stats ? { ...state.stats } : {
     doublesCount: {},
     bustCount: {},
-    sevensInHazard: {},
+    hazardRolls: {},
+    earlyBanks: {},
     biggestRound: null,
     totalRolls: {},
     comebackKing: null,
@@ -204,12 +206,16 @@ export function applyRoll(state: GameState): GameState {
     }
   }
 
-  // Track 7s in hazard mode (bust)
-  if (busted && newRollCount > 3) {
-    updatedStats.sevensInHazard = {
-      ...updatedStats.sevensInHazard,
-      [currentPlayer.id]: (updatedStats.sevensInHazard[currentPlayer.id] || 0) + 1,
+  // Track hazard rolls (any roll in hazard mode - roll 4+)
+  if (newRollCount > 3) {
+    updatedStats.hazardRolls = {
+      ...updatedStats.hazardRolls,
+      [currentPlayer.id]: (updatedStats.hazardRolls[currentPlayer.id] || 0) + 1,
     }
+  }
+
+  // Track busts
+  if (busted) {
     updatedStats.bustCount = {
       ...updatedStats.bustCount,
       [currentPlayer.id]: (updatedStats.bustCount[currentPlayer.id] || 0) + 1,
@@ -264,15 +270,27 @@ export function applyBank(state: GameState, playerId: string): GameState {
       : p
   )
 
-  // Update stats for biggestRound and comebackKing
+  // Update stats for biggestRound, comebackKing, and earlyBanks
   const pointsThisRound = player.pointsEarnedThisRound + state.bankValue
   let updatedStats = state.stats ? { ...state.stats } : {
     doublesCount: {},
     bustCount: {},
-    sevensInHazard: {},
+    hazardRolls: {},
+    earlyBanks: {},
     biggestRound: null,
     totalRolls: {},
     comebackKing: null,
+  }
+
+  // Track early banks (banking before hazard mode - rolls 1-3)
+  if (state.rollCountThisRound <= 3) {
+    updatedStats = {
+      ...updatedStats,
+      earlyBanks: {
+        ...updatedStats.earlyBanks,
+        [player.id]: (updatedStats.earlyBanks[player.id] || 0) + 1,
+      },
+    }
   }
 
   // Track biggest round
