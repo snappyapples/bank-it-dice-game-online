@@ -1,15 +1,22 @@
 import { GameState, GameStats, Player, RollEffect, RollHistoryEntry } from './types'
 
 // Banking window duration in milliseconds (time players have to bank after each roll)
-export const BANKING_WINDOW_MS = 10000
+export const BANKING_WINDOW_MS = 7000
 
 /**
  * Check if a roll is allowed based on the banking window timer
  * First roll of each round is always allowed immediately
+ * No banking window needed if only one player left (everyone else banked)
  */
 export function canRollNow(state: GameState): { allowed: boolean; remainingMs: number } {
   // First roll of round always allowed (no banking window)
   if (state.rollCountThisRound === 0 || !state.lastRollAt) {
+    return { allowed: true, remainingMs: 0 }
+  }
+
+  // No banking window if only one player left to roll
+  const playersStillIn = state.players.filter(p => !p.hasBankedThisRound)
+  if (playersStillIn.length <= 1) {
     return { allowed: true, remainingMs: 0 }
   }
 

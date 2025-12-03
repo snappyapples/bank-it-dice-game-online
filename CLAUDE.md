@@ -91,11 +91,11 @@ User Action → API Route → Pure Game Logic → New State → Supabase → Pol
 
 ### Banking Window
 
-After each roll (except the first of each round), there's a 3-second banking window before the next player can roll:
+After each roll (except the first of each round), there's a 10-second banking window before the next player can roll:
 - **Server-enforced:** `canRollNow()` in `lib/gameLogic.ts` checks `lastRollAt` timestamp
 - **Roll API validation:** Returns 400 error if banking window still active
 - **UI countdown:** ActionPanel shows "Wait Xs..." for current player, "Bank now! (Xs)" for others
-- **Constant:** `BANKING_WINDOW_MS = 3000` in `lib/gameLogic.ts`
+- **Constant:** `BANKING_WINDOW_MS = 10000` in `lib/gameLogic.ts` and `components/ActionPanel.tsx`
 - First roll of each round has no delay (`lastRollAt` is cleared in `startNewRound()`)
 
 ### 3D Dice Animation

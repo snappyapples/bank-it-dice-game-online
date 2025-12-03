@@ -294,6 +294,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   }, [gameState, currentRound])
 
   // Detect when it becomes current player's turn and show popup
+  // Delay popup until banking window ends so it appears when they can actually roll
+  const BANKING_WINDOW_MS = 7000 // Must match lib/gameLogic.ts
   useEffect(() => {
     if (!gameState || gameState.phase !== 'inRound') return
 
@@ -304,8 +306,18 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
     // Check if roller changed and it's now this player's turn
     if (isNowRoller && currentRollerId !== prevRollerRef.current && prevRollerRef.current !== null) {
-      setShowTurnPopup(true)
-      setTimeout(() => setShowTurnPopup(false), 2500)
+      // Calculate remaining banking window time
+      let delayMs = 0
+      if (gameState.lastRollAt && gameState.rollCountThisRound > 0) {
+        const elapsed = Date.now() - gameState.lastRollAt
+        delayMs = Math.max(0, BANKING_WINDOW_MS - elapsed)
+      }
+
+      // Show popup when banking window ends (when they can actually roll)
+      setTimeout(() => {
+        setShowTurnPopup(true)
+        setTimeout(() => setShowTurnPopup(false), 2500)
+      }, delayMs)
     }
 
     prevRollerRef.current = currentRollerId

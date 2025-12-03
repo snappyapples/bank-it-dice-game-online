@@ -5,7 +5,7 @@ import { RollEffect, Player } from '@/lib/types'
 import ThreeDDice from './ThreeDDice'
 
 const ROLL_DURATION = 2500  // Dice roll for 2.5 seconds
-const BANKING_WINDOW_MS = 10000  // Must match lib/gameLogic.ts
+const BANKING_WINDOW_MS = 7000  // Must match lib/gameLogic.ts
 
 // Hook to detect mobile screen size
 function useIsMobile() {
@@ -47,29 +47,37 @@ export default function ActionPanel({
   onRoll,
 }: ActionPanelProps) {
   const [isBouncing, setIsBouncing] = useState(false)
-  const [countdownSeconds, setCountdownSeconds] = useState(0)
+  const [tick, setTick] = useState(0) // Used to trigger re-renders for countdown
   const isMobile = useIsMobile()
   const diceSize = isMobile ? 70 : 100
 
-  // Calculate and update banking window countdown
+  // Calculate remaining banking window time synchronously on each render
+  // This runs on every render (tick updates trigger re-renders)
+  let countdownSeconds = 0
+  if (rollCountThisRound > 0 && lastRollAt && turnOrder.length > 1) {
+    const elapsed = Date.now() - lastRollAt
+    countdownSeconds = Math.max(0, Math.ceil((BANKING_WINDOW_MS - elapsed) / 1000))
+  }
+
+  // Force re-render every 100ms to update countdown display
   useEffect(() => {
-    // No countdown for first roll of round
-    if (rollCountThisRound === 0 || !lastRollAt) {
-      setCountdownSeconds(0)
+    // No countdown needed
+    if (rollCountThisRound === 0 || !lastRollAt || turnOrder.length <= 1) {
       return
     }
 
-    const updateCountdown = () => {
-      const elapsed = Date.now() - lastRollAt
-      const remaining = Math.max(0, BANKING_WINDOW_MS - elapsed)
-      setCountdownSeconds(Math.ceil(remaining / 1000))
+    // Check if we're still in the window
+    const elapsed = Date.now() - lastRollAt
+    if (elapsed >= BANKING_WINDOW_MS) {
+      return
     }
 
-    updateCountdown()
-    const interval = setInterval(updateCountdown, 100) // Update every 100ms for smooth countdown
+    const interval = setInterval(() => {
+      setTick(n => n + 1)
+    }, 100)
 
     return () => clearInterval(interval)
-  }, [lastRollAt, rollCountThisRound])
+  }, [lastRollAt, rollCountThisRound, turnOrder.length])
 
   const isInBankingWindow = countdownSeconds > 0
 
