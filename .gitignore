@@ -31,3 +31,12 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Analysis scripts (local only)
+/analysis/
+
+# Separate project folder
+/cube-bluff-starter/
+
+# Misc
+nul

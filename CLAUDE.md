@@ -72,6 +72,7 @@ User Action → API Route → Pure Game Logic → New State → Supabase → Pol
 - `POST /api/rooms/[roomId]/roll` - Roll dice
 - `POST /api/rooms/[roomId]/bank` - Bank points
 - `POST /api/rooms/[roomId]/restart` - Restart game in same room (caller becomes new host)
+- `POST /api/rooms/[roomId]/settings` - Update room settings (host only, lobby phase only)
 
 **Client Synchronization** (`app/room/[roomId]/page.tsx`):
 - Polls every 2 seconds
@@ -110,7 +111,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 ### Type System (`lib/types.ts`)
 
 - `GameState` - Complete game state including timestamps (`bustAt`, `roundWinnerAt`), `lastRollerIndex`, `lastBankedPlayer`, `lastBankedAt`, `stats`
-- `GameStats` - End-game statistics tracking: doublesCount, bustCount, sevensInHazard, biggestRound, totalRolls, comebackKing
+- `GameStats` - End-game statistics tracking: doublesCount, bustCount, hazardRolls, totalRollsAtBank, bankCount, biggestRound, totalRolls, comebackKing
 - `Player` - Score, banking state, `pointsEarnedThisRound`
 - `RollEffect` - effectType: 'add' | 'add70' | 'doubleBank' | 'bust' | 'none'
 - `RollHistoryEntry`, `RoundHistoryEntry` - History tracking
@@ -199,17 +200,32 @@ Database schema in `supabase/schema.sql`.
 
 **Banking Overlay:** Brief floating overlay when any player banks, showing their name.
 
-**Round Winner Card:** Displays round winner with points earned, same styling as bust card.
+**Round Winner Card:** Displays round winner with points earned, includes compact leaderboard below.
+
+**Turn Notification:** "It's your turn!" popup appears when the current player changes to you (detected via polling).
+
+**Auto-Scroll:** On mobile, auto-scrolls to bank panel at round start; auto-scrolls to stats after game ends.
 
 **Share Functionality:** Share button uses Web Share API (or clipboard fallback) with URL `/?code=ROOMID` that auto-opens join modal.
 
 **Victory Celebration:** When game ends, displays confetti animation (`Confetti` component) and plays victory music. Header "Bank It" logo links to home page.
 
+**Game Stats/Awards:** `GameStats` component displays end-game awards:
+- Lucky Doubles 🎰 - Most doubles in hazard mode
+- Danger Zone 💀 - Most busts
+- Risk Taker 🎯 - Most rolls in hazard mode (aggressive play)
+- Safe Player 🛡️ - Lowest average roll count when banking (most conservative)
+- Biggest Round 💎 - Highest single-round score
+- Luckiest 🍀 - Highest points per roll ratio
+- Comeback King 👑 - Largest deficit overcome to take lead
+
 **Responsive Design:** Dice size adapts to screen width (70px under 500px, 100px on desktop). Status bar wraps on narrow screens. `useIsMobile` hook in ActionPanel detects screen width.
 
 ### Game Setup
 
-**Round Presets:** Create game modal offers Short (5), Medium (20), Long (40), or Custom rounds with slider (3-50).
+**Round Presets:** Create game modal offers Short (5), Medium (15), Long (30), or Custom rounds with slider (3-50). Default is Medium (15).
+
+**Host Settings:** In the waiting room lobby, the host can adjust the number of rounds using preset buttons (5/15/30) or a custom slider.
 
 **Play Again Flow:** Two buttons on game completion:
 - **Play Again** - Restarts game in same room with same code. First player to click becomes new host; other players see join form (nickname pre-filled from localStorage). Uses `gameStore.restartRoom()`.

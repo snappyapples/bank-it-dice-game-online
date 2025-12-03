@@ -32,7 +32,8 @@ export function initGame(playerNicknames: string[], totalRounds: number): GameSt
     doublesCount: Object.fromEntries(players.map(p => [p.id, 0])),
     bustCount: Object.fromEntries(players.map(p => [p.id, 0])),
     hazardRolls: Object.fromEntries(players.map(p => [p.id, 0])),
-    earlyBanks: Object.fromEntries(players.map(p => [p.id, 0])),
+    totalRollsAtBank: Object.fromEntries(players.map(p => [p.id, 0])),
+    bankCount: Object.fromEntries(players.map(p => [p.id, 0])),
     biggestRound: null,
     totalRolls: Object.fromEntries(players.map(p => [p.id, 0])),
     comebackKing: null,
@@ -186,7 +187,8 @@ export function applyRoll(state: GameState): GameState {
     doublesCount: {},
     bustCount: {},
     hazardRolls: {},
-    earlyBanks: {},
+    totalRollsAtBank: {},
+    bankCount: {},
     biggestRound: null,
     totalRolls: {},
     comebackKing: null,
@@ -276,21 +278,24 @@ export function applyBank(state: GameState, playerId: string): GameState {
     doublesCount: {},
     bustCount: {},
     hazardRolls: {},
-    earlyBanks: {},
+    totalRollsAtBank: {},
+    bankCount: {},
     biggestRound: null,
     totalRolls: {},
     comebackKing: null,
   }
 
-  // Track early banks (banking before hazard mode - rolls 1-3)
-  if (state.rollCountThisRound <= 3) {
-    updatedStats = {
-      ...updatedStats,
-      earlyBanks: {
-        ...updatedStats.earlyBanks,
-        [player.id]: (updatedStats.earlyBanks[player.id] || 0) + 1,
-      },
-    }
+  // Track banking stats for Safe Player award (lowest average roll count at banking)
+  updatedStats = {
+    ...updatedStats,
+    totalRollsAtBank: {
+      ...updatedStats.totalRollsAtBank,
+      [player.id]: (updatedStats.totalRollsAtBank[player.id] || 0) + state.rollCountThisRound,
+    },
+    bankCount: {
+      ...updatedStats.bankCount,
+      [player.id]: (updatedStats.bankCount[player.id] || 0) + 1,
+    },
   }
 
   // Track biggest round

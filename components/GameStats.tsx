@@ -74,19 +74,31 @@ export default function GameStats({ gameState }: GameStatsProps) {
     }
   }
 
-  // Safe Player - most early banks (before hazard mode)
-  const earlyBankEntries = Object.entries(stats.earlyBanks)
-  if (earlyBankEntries.length > 0) {
-    const maxEarlyBanks = Math.max(...earlyBankEntries.map(([, count]) => count))
-    if (maxEarlyBanks > 0) {
-      const winnerId = earlyBankEntries.find(([, count]) => count === maxEarlyBanks)?.[0]
-      const winner = players.find(p => p.id === winnerId)
+  // Safe Player - lowest average roll count when banking (most conservative)
+  const bankCountEntries = Object.entries(stats.bankCount)
+  if (bankCountEntries.length > 0) {
+    let lowestAvg = Infinity
+    let safestPlayerId: string | null = null
+
+    for (const [playerId, count] of bankCountEntries) {
+      if (count > 0) {
+        const totalRolls = stats.totalRollsAtBank[playerId] || 0
+        const avg = totalRolls / count
+        if (avg < lowestAvg) {
+          lowestAvg = avg
+          safestPlayerId = playerId
+        }
+      }
+    }
+
+    if (safestPlayerId && lowestAvg < Infinity) {
+      const winner = players.find(p => p.id === safestPlayerId)
       if (winner) {
         awards.push({
           icon: '🛡️',
           title: 'Safe Player',
           player: winner.nickname,
-          value: `${maxEarlyBanks} early banks`,
+          value: `Avg ${lowestAvg.toFixed(1)} rolls`,
         })
       }
     }

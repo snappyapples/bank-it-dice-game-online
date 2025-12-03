@@ -47,7 +47,8 @@ export interface GameStats {
   doublesCount: Record<PlayerId, number>
   bustCount: Record<PlayerId, number>
   hazardRolls: Record<PlayerId, number>  // Rolls made in hazard mode (roll 4+)
-  earlyBanks: Record<PlayerId, number>   // Times banked before hazard mode (rolls 1-3)
+  totalRollsAtBank: Record<PlayerId, number>  // Sum of roll counts when player banked
+  bankCount: Record<PlayerId, number>         // Number of times player banked
   biggestRound: { player: string; points: number; round: number } | null
   totalRolls: Record<PlayerId, number>
   comebackKing: { player: string; deficit: number } | null
