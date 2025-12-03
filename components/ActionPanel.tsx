@@ -5,7 +5,7 @@ import { RollEffect, Player } from '@/lib/types'
 import ThreeDDice from './ThreeDDice'
 
 const ROLL_DURATION = 2500  // Dice roll for 2.5 seconds
-const BANKING_WINDOW_MS = 3000  // Must match lib/gameLogic.ts
+const BANKING_WINDOW_MS = 10000  // Must match lib/gameLogic.ts
 
 // Hook to detect mobile screen size
 function useIsMobile() {

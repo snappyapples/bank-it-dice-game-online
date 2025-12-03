@@ -1,7 +1,7 @@
 import { GameState, GameStats, Player, RollEffect, RollHistoryEntry } from './types'
 
 // Banking window duration in milliseconds (time players have to bank after each roll)
-export const BANKING_WINDOW_MS = 3000
+export const BANKING_WINDOW_MS = 10000
 
 /**
  * Check if a roll is allowed based on the banking window timer
