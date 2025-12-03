@@ -19,7 +19,20 @@
       "Bash(git push:*)",
       "Bash(git remote set-url:*)",
       "Bash(git tag:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(dir:*)",
+      "WebFetch(domain:www.udio.com)",
+      "Bash(npx tsx:*)",
+      "Bash(find:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"taskkill /F /PID 81052\")",
+      "Bash(if exist \".next\" rmdir /s /q \".next\")",
+      "Bash(powershell -Command \"Stop-Process -Id 81052 -Force\")",
+      "Bash(powershell -Command \"Stop-Process -Id 67060 -Force\")",
+      "Bash(npx tsc:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []
