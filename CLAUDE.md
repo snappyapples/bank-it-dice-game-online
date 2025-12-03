@@ -89,6 +89,15 @@ User Action → API Route → Pure Game Logic → New State → Supabase → Pol
 - **bust**: Shows BUST! overlay for 10 seconds (`bustAt` timestamp), then transitions to roundWinner
 - **roundWinner**: Shows round winner card for 5 seconds (`roundWinnerAt` timestamp), then starts new round
 
+### Banking Window
+
+After each roll (except the first of each round), there's a 3-second banking window before the next player can roll:
+- **Server-enforced:** `canRollNow()` in `lib/gameLogic.ts` checks `lastRollAt` timestamp
+- **Roll API validation:** Returns 400 error if banking window still active
+- **UI countdown:** ActionPanel shows "Wait Xs..." for current player, "Bank now! (Xs)" for others
+- **Constant:** `BANKING_WINDOW_MS = 3000` in `lib/gameLogic.ts`
+- First roll of each round has no delay (`lastRollAt` is cleared in `startNewRound()`)
+
 ### 3D Dice Animation
 
 `ThreeDDice` component uses Web Animations API:
@@ -110,7 +119,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
 ### Type System (`lib/types.ts`)
 
-- `GameState` - Complete game state including timestamps (`bustAt`, `roundWinnerAt`), `lastRollerIndex`, `lastBankedPlayer`, `lastBankedAt`, `stats`
+- `GameState` - Complete game state including timestamps (`bustAt`, `roundWinnerAt`, `lastRollAt`), `lastRollerIndex`, `lastBankedPlayer`, `lastBankedAt`, `stats`
 - `GameStats` - End-game statistics tracking: doublesCount, bustCount, hazardRolls, totalRollsAtBank, bankCount, biggestRound, totalRolls, comebackKing
 - `Player` - Score, banking state, `pointsEarnedThisRound`
 - `RollEffect` - effectType: 'add' | 'add70' | 'doubleBank' | 'bust' | 'none'

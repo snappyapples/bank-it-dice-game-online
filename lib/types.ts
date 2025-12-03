@@ -69,5 +69,6 @@ export interface GameState {
   lastRollerIndex?: number // Track who was rolling when round ended (for next round start)
   lastBankedPlayer?: string // Nickname of the last player who banked (for overlay display)
   lastBankedAt?: number // Timestamp when last player banked
+  lastRollAt?: number // Timestamp when last roll completed (for banking window)
   stats?: GameStats // Game statistics for end-game awards
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { gameStore } from '@/lib/gameStore'
-import { applyRoll } from '@/lib/gameLogic'
+import { applyRoll, canRollNow } from '@/lib/gameLogic'
 
 export async function POST(
   request: NextRequest,
@@ -62,6 +62,16 @@ export async function POST(
       console.log('[Roll] Not player turn. Current:', currentPlayer?.id, 'Request:', playerGameId)
       return NextResponse.json(
         { error: `Not your turn. Current roller: ${currentPlayer?.nickname || 'unknown'}` },
+        { status: 400 }
+      )
+    }
+
+    // Check if banking window has passed (after first roll of round)
+    const rollCheck = canRollNow(room.gameState)
+    if (!rollCheck.allowed) {
+      console.log('[Roll] Banking window still active, remaining:', rollCheck.remainingMs)
+      return NextResponse.json(
+        { error: 'Banking window still active', remainingMs: rollCheck.remainingMs },
         { status: 400 }
       )
     }

@@ -1,5 +1,28 @@
 import { GameState, GameStats, Player, RollEffect, RollHistoryEntry } from './types'
 
+// Banking window duration in milliseconds (time players have to bank after each roll)
+export const BANKING_WINDOW_MS = 3000
+
+/**
+ * Check if a roll is allowed based on the banking window timer
+ * First roll of each round is always allowed immediately
+ */
+export function canRollNow(state: GameState): { allowed: boolean; remainingMs: number } {
+  // First roll of round always allowed (no banking window)
+  if (state.rollCountThisRound === 0 || !state.lastRollAt) {
+    return { allowed: true, remainingMs: 0 }
+  }
+
+  const elapsed = Date.now() - state.lastRollAt
+  const remaining = BANKING_WINDOW_MS - elapsed
+
+  if (remaining <= 0) {
+    return { allowed: true, remainingMs: 0 }
+  }
+
+  return { allowed: false, remainingMs: remaining }
+}
+
 /**
  * Roll two dice and return the results
  */
@@ -231,6 +254,7 @@ export function applyRoll(state: GameState): GameState {
     lastRoll: effect,
     history: [...state.history, historyEntry],
     stats: updatedStats,
+    lastRollAt: Date.now(), // Set timestamp for banking window
   }
 
   // If busted, end the round immediately
@@ -522,6 +546,7 @@ export function startNewRound(state: GameState): GameState {
     roundWinnerAt: undefined,
     lastBankedPlayer: undefined,
     lastBankedAt: undefined,
+    lastRollAt: undefined, // Clear for new round so first roll isn't blocked
   }
 }
 

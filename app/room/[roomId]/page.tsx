@@ -407,6 +407,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
       if (!response.ok) {
         const data = await response.json()
+        // Silently ignore banking window errors - UI should prevent this
+        if (data.error === 'Banking window still active') {
+          return
+        }
         throw new Error(data.error || 'Failed to roll')
       }
 
@@ -1022,6 +1026,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               isBustPhase={isBustPhase || isRoundWinnerPhase}
               currentRollerName={gameState.players.find(p => p.isCurrentRoller)?.nickname || ''}
               turnOrder={turnOrder}
+              lastRollAt={gameState.lastRollAt}
+              rollCountThisRound={gameState.rollCountThisRound}
               onRoll={handleRoll}
             />
           </div>

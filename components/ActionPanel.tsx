@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { RollEffect, Player } from '@/lib/types'
 import ThreeDDice from './ThreeDDice'
+import { BANKING_WINDOW_MS } from '@/lib/gameLogic'
 
 const ROLL_DURATION = 2500  // Dice roll for 2.5 seconds
 
@@ -28,6 +29,8 @@ interface ActionPanelProps {
   isBustPhase?: boolean
   currentRollerName?: string
   turnOrder?: Player[]
+  lastRollAt?: number
+  rollCountThisRound: number
   onRoll: () => void
 }
 
@@ -39,11 +42,36 @@ export default function ActionPanel({
   isBustPhase = false,
   currentRollerName = '',
   turnOrder = [],
+  lastRollAt,
+  rollCountThisRound,
   onRoll,
 }: ActionPanelProps) {
   const [isBouncing, setIsBouncing] = useState(false)
+  const [countdownSeconds, setCountdownSeconds] = useState(0)
   const isMobile = useIsMobile()
   const diceSize = isMobile ? 70 : 100
+
+  // Calculate and update banking window countdown
+  useEffect(() => {
+    // No countdown for first roll of round
+    if (rollCountThisRound === 0 || !lastRollAt) {
+      setCountdownSeconds(0)
+      return
+    }
+
+    const updateCountdown = () => {
+      const elapsed = Date.now() - lastRollAt
+      const remaining = Math.max(0, BANKING_WINDOW_MS - elapsed)
+      setCountdownSeconds(Math.ceil(remaining / 1000))
+    }
+
+    updateCountdown()
+    const interval = setInterval(updateCountdown, 100) // Update every 100ms for smooth countdown
+
+    return () => clearInterval(interval)
+  }, [lastRollAt, rollCountThisRound])
+
+  const isInBankingWindow = countdownSeconds > 0
 
   // Handle bounce animation when roll completes
   useEffect(() => {
@@ -107,22 +135,29 @@ export default function ActionPanel({
           !isRolling && (
             <button
               onClick={onRoll}
-              disabled={hasBanked || isBustPhase}
+              disabled={hasBanked || isBustPhase || isInBankingWindow}
               className={`
                 w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
                 ${
-                  !hasBanked && !isBustPhase
+                  !hasBanked && !isBustPhase && !isInBankingWindow
                     ? 'bg-brand-lime hover:bg-brand-lime/90 hover:scale-105 text-black shadow-lg shadow-brand-lime/20 cursor-pointer'
                     : 'bg-gray-800 text-gray-600 cursor-not-allowed'
                 }
               `}
             >
-              🎲 Roll Dice
+              {isInBankingWindow ? `Wait ${countdownSeconds}s...` : '🎲 Roll Dice'}
             </button>
           )
         ) : (
           <div className="bg-gray-900/50 rounded-lg p-4">
-            <div className="text-sm text-gray-400 mb-3">Up Next:</div>
+            <div className="text-sm text-gray-400 mb-3 flex items-center gap-2">
+              <span>Up Next:</span>
+              {isInBankingWindow && (
+                <span className="text-brand-lime font-bold animate-pulse">
+                  Bank now! ({countdownSeconds}s)
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               {turnOrder.map((player, index) => (
                 <div
