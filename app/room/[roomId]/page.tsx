@@ -11,6 +11,7 @@ import GameStats from '@/components/GameStats'
 import { GameState } from '@/lib/types'
 import { useSounds } from '@/hooks/useSounds'
 import { soundManager } from '@/lib/sounds'
+import { useHeaderContext } from '@/contexts/HeaderContext'
 
 function getPlayerId(): string {
   if (typeof window === 'undefined') return ''
@@ -51,6 +52,9 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   // Sound effects
   const { play: playSound } = useSounds()
 
+  // Header auto-hide on desktop during game
+  const { setAutoHide } = useHeaderContext()
+
   // Refs to access current values in polling callback
   const lastRollIdRef = useRef<string | null>(null)
   const isRollingRef = useRef(false)
@@ -66,6 +70,13 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   useEffect(() => { lastRollIdRef.current = lastRollId }, [lastRollId])
   useEffect(() => { isRollingRef.current = isRolling }, [isRolling])
   useEffect(() => { pendingGameStateRef.current = pendingGameState }, [pendingGameState])
+
+  // Enable header auto-hide on desktop when game is active (not in lobby or finished)
+  useEffect(() => {
+    const shouldAutoHide = gameStarted && gameState?.phase !== 'finished'
+    setAutoHide(shouldAutoHide)
+    return () => setAutoHide(false)
+  }, [gameStarted, gameState?.phase, setAutoHide])
 
   // Load saved nickname
   useEffect(() => {

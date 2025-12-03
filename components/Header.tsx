@@ -1,15 +1,59 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import HowToPlayModal from './HowToPlayModal'
+import { useHeaderContext } from '@/contexts/HeaderContext'
 
 export default function Header() {
   const [showHowToPlay, setShowHowToPlay] = useState(false)
+  const [isVisible, setIsVisible] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
+  const { autoHide } = useHeaderContext()
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Handle auto-hide behavior on desktop
+  useEffect(() => {
+    if (!autoHide || isMobile) {
+      setIsVisible(true)
+      return
+    }
+
+    // Hide header when auto-hide is enabled on desktop
+    setIsVisible(false)
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Show header when mouse is within 60px of top
+      if (e.clientY <= 60) {
+        setIsVisible(true)
+      } else if (e.clientY > 100) {
+        // Hide when mouse moves past 100px from top
+        setIsVisible(false)
+      }
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [autoHide, isMobile])
 
   return (
     <>
-      <header className="flex items-center justify-between px-4 py-4 sm:px-10 whitespace-nowrap">
+      <header
+        className={`flex items-center justify-between px-4 py-4 sm:px-10 whitespace-nowrap transition-all duration-300 ${
+          autoHide && !isMobile
+            ? `fixed top-0 left-0 right-0 z-50 bg-background-dark/95 backdrop-blur-sm ${
+                isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+              }`
+            : ''
+        }`}
+      >
         <Link href="/" className="flex items-center gap-2 sm:gap-3 flex-shrink-0 hover:opacity-80 transition-opacity">
           <div className="text-brand-lime size-6 sm:size-8 flex-shrink-0">
             <svg className="h-6 w-6 sm:h-8 sm:w-8 text-brand-lime" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
