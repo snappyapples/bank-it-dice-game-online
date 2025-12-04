@@ -1,11 +1,28 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Header from '@/components/Header'
 import { HeaderProvider } from '@/contexts/HeaderContext'
+import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 
 export const metadata: Metadata = {
   title: 'Bank It - Online Dice Game',
   description: 'Play Bank It dice game with your friends online',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Bank It',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#A3E635',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({
@@ -16,6 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="font-display bg-background-dark text-gray-100">
+        <ServiceWorkerRegistration />
         <HeaderProvider>
           <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden">
             {/* Background gradients */}
