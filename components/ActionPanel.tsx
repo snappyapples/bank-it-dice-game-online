@@ -31,6 +31,8 @@ interface ActionPanelProps {
   turnOrder?: Player[]
   lastRollAt?: number
   rollCountThisRound: number
+  playerId?: string
+  leadingScore?: number
   onRoll: () => void
 }
 
@@ -44,6 +46,8 @@ export default function ActionPanel({
   turnOrder = [],
   lastRollAt,
   rollCountThisRound,
+  playerId,
+  leadingScore = 0,
   onRoll,
 }: ActionPanelProps) {
   const [isBouncing, setIsBouncing] = useState(false)
@@ -136,38 +140,43 @@ export default function ActionPanel({
         </div>
       </div>
 
-      {/* Roll Button or Up Next - min-height to prevent layout jumping */}
-      <div className="mt-6 min-h-[72px]">
-        {isCurrentPlayer ? (
-          // Current player: show button when not rolling, hide during roll
-          !isRolling && (
-            <button
-              onClick={onRoll}
-              disabled={hasBanked || isBustPhase || isInBankingWindow}
-              className={`
-                w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
-                ${
-                  !hasBanked && !isBustPhase && !isInBankingWindow
-                    ? 'bg-brand-lime hover:bg-brand-lime/90 hover:scale-105 text-black shadow-lg shadow-brand-lime/20 cursor-pointer'
-                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                }
-              `}
-            >
-              {isInBankingWindow ? `Wait ${countdownSeconds}s...` : '🎲 Roll Dice'}
-            </button>
-          )
-        ) : (
-          <div className="bg-gray-900/50 rounded-lg p-4">
-            <div className="text-sm text-gray-400 mb-3 flex items-center gap-2">
-              <span>Up Next:</span>
-              {isInBankingWindow && (
-                <span className="text-brand-lime font-bold animate-pulse">
-                  Bank now! ({countdownSeconds}s)
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {turnOrder.map((player, index) => (
+      {/* Roll Button - show for current player when not rolling */}
+      {isCurrentPlayer && !isRolling && (
+        <div className="mt-6">
+          <button
+            onClick={onRoll}
+            disabled={hasBanked || isBustPhase || isInBankingWindow}
+            className={`
+              w-full py-4 px-6 rounded-full font-bold text-lg transition-all duration-200 transform
+              ${
+                !hasBanked && !isBustPhase && !isInBankingWindow
+                  ? 'bg-brand-lime hover:bg-brand-lime/90 hover:scale-105 text-black shadow-lg shadow-brand-lime/20 cursor-pointer'
+                  : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+              }
+            `}
+          >
+            {isInBankingWindow ? `Wait ${countdownSeconds}s...` : '🎲 Roll Dice'}
+          </button>
+        </div>
+      )}
+
+      {/* Up Next - always shown */}
+      <div className={`${isCurrentPlayer && !isRolling ? 'mt-4' : 'mt-6'}`}>
+        <div className="bg-gray-900/50 rounded-lg p-4">
+          <div className="text-sm text-gray-400 mb-3 flex items-center gap-2">
+            <span>Up Next:</span>
+            {!isCurrentPlayer && isInBankingWindow && (
+              <span className="text-brand-lime font-bold animate-pulse">
+                Bank now! ({countdownSeconds}s)
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {turnOrder.map((player, index) => {
+              const isYou = player.id === playerId
+              const pointsBehind = leadingScore - player.score
+
+              return (
                 <div
                   key={player.id}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full whitespace-nowrap ${
@@ -178,11 +187,16 @@ export default function ActionPanel({
                 >
                   {index === 0 && <span>🎯</span>}
                   {player.nickname}
+                  {isYou && pointsBehind > 0 && (
+                    <span className={index === 0 ? 'text-black/70' : 'text-bust-red'}>
+                      (-{pointsBehind})
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Status Text - fixed height placeholder to prevent layout jumping */}
