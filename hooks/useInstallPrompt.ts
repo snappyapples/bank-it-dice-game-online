@@ -7,8 +7,19 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+// Detect iOS Safari (only browser that can install PWAs on iOS)
+function isIOSSafari(): boolean {
+  if (typeof window === 'undefined') return false
+  const ua = window.navigator.userAgent
+  const isIOS = /iPad|iPhone|iPod/.test(ua)
+  // Chrome/Firefox on iOS still report Safari in UA, but also report CriOS/FxiOS
+  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS/.test(ua)
+  return isIOS && isSafari
+}
+
 export function useInstallPrompt() {
   const [canInstall, setCanInstall] = useState(false)
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
 
   useEffect(() => {
@@ -18,6 +29,12 @@ export function useInstallPrompt() {
 
     if (isStandalone) {
       // Already installed, don't show install button
+      return
+    }
+
+    // Check if iOS Safari - show manual instructions
+    if (isIOSSafari()) {
+      setShowIOSInstructions(true)
       return
     }
 
@@ -62,8 +79,24 @@ export function useInstallPrompt() {
     setDeferredPrompt(null)
   }, [deferredPrompt])
 
+  // Dismiss iOS instructions (user can hide it)
+  const dismissIOSInstructions = useCallback(() => {
+    setShowIOSInstructions(false)
+    // Remember dismissal in localStorage
+    localStorage.setItem('iosInstallDismissed', 'true')
+  }, [])
+
+  // Check if user previously dismissed iOS instructions
+  useEffect(() => {
+    if (showIOSInstructions && localStorage.getItem('iosInstallDismissed') === 'true') {
+      setShowIOSInstructions(false)
+    }
+  }, [showIOSInstructions])
+
   return {
     canInstall,
+    showIOSInstructions,
     promptInstall,
+    dismissIOSInstructions,
   }
 }
