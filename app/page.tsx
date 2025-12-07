@@ -5,10 +5,12 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import AnimatedDice from '@/components/AnimatedDice'
 import CreateGameModal from '@/components/CreateGameModal'
 import JoinGameModal from '@/components/JoinGameModal'
+import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 
 function HomeContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { canInstall, promptInstall } = useInstallPrompt()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showJoinModal, setShowJoinModal] = useState(false)
   const [initialRoomCode, setInitialRoomCode] = useState('')
@@ -94,6 +96,21 @@ function HomeContent() {
             </div>
           </button>
         </div>
+
+        {/* Install App Banner */}
+        {canInstall && (
+          <div className="w-full max-w-4xl mt-8">
+            <button
+              onClick={promptInstall}
+              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-800 hover:border-gray-600 transition-all"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Install App for Quick Access
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modals */}

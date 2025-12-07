@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import HowToPlayModal from './HowToPlayModal'
 import { useHeaderContext } from '@/contexts/HeaderContext'
+import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 
 export default function Header() {
   const [showHowToPlay, setShowHowToPlay] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
   const { autoHide } = useHeaderContext()
+  const { canInstall, promptInstall } = useInstallPrompt()
 
   // Detect mobile
   useEffect(() => {
@@ -62,13 +64,25 @@ export default function Header() {
           </div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tighter">Bank It</h2>
         </Link>
-        <div className="flex items-center gap-4 sm:gap-9 flex-shrink-0">
+        <div className="flex items-center gap-4 sm:gap-6 flex-shrink-0">
           <button
             onClick={() => setShowHowToPlay(true)}
             className="text-xs sm:text-sm font-medium leading-normal text-gray-300 transition-colors hover:text-brand-lime"
           >
             How to Play
           </button>
+          {canInstall && (
+            <button
+              onClick={promptInstall}
+              className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-300 transition-colors hover:text-brand-lime"
+              title="Install App"
+            >
+              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span className="hidden sm:inline">Install</span>
+            </button>
+          )}
         </div>
       </header>
 
