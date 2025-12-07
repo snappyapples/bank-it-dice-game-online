@@ -65,8 +65,9 @@ export default function JoinGameModal({ isOpen, onClose, initialRoomCode = '' }:
         throw new Error(data.error || 'Failed to join room')
       }
 
-      // Store nickname in localStorage
+      // Store nickname and room ID in localStorage
       localStorage.setItem('nickname', nickname.trim())
+      localStorage.setItem('activeRoomId', roomCode.toUpperCase())
 
       router.push(`/room/${roomCode}`)
     } catch (err) {

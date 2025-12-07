@@ -79,8 +79,9 @@ export default function CreateGameModal({ isOpen, onClose }: CreateGameModalProp
         throw new Error(data.error || 'Failed to create room')
       }
 
-      // Store nickname in localStorage
+      // Store nickname and room ID in localStorage
       localStorage.setItem('nickname', nickname.trim())
+      localStorage.setItem('activeRoomId', data.roomId)
 
       router.push(`/room/${data.roomId}`)
     } catch (err) {

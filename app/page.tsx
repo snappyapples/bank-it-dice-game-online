@@ -1,16 +1,26 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import AnimatedDice from '@/components/AnimatedDice'
 import CreateGameModal from '@/components/CreateGameModal'
 import JoinGameModal from '@/components/JoinGameModal'
 
 function HomeContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showJoinModal, setShowJoinModal] = useState(false)
   const [initialRoomCode, setInitialRoomCode] = useState('')
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
+
+  // Check for active game in localStorage
+  useEffect(() => {
+    const roomId = localStorage.getItem('activeRoomId')
+    if (roomId) {
+      setActiveRoomId(roomId)
+    }
+  }, [])
 
   // Check for room code in URL params (from shared links)
   useEffect(() => {
@@ -34,6 +44,21 @@ function HomeContent() {
             The ultimate online dice game of risk and reward. Create a game or join one to start playing!
           </p>
         </div>
+
+        {/* Rejoin Active Game Banner */}
+        {activeRoomId && (
+          <div className="w-full max-w-4xl mb-8">
+            <button
+              onClick={() => router.push(`/room/${activeRoomId}`)}
+              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-brand-lime/20 border-2 border-brand-lime rounded-lg text-brand-lime font-bold text-lg hover:bg-brand-lime/30 transition-all"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Rejoin Game ({activeRoomId.toUpperCase()})
+            </button>
+          </div>
+        )}
 
         {/* Action Cards */}
         <div className="flex w-full max-w-4xl flex-col items-stretch gap-8 md:flex-row">

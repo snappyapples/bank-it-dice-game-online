@@ -95,6 +95,13 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     }
   }, [gameState, gameStarted])
 
+  // Clear activeRoomId when game finishes (so home page doesn't show rejoin)
+  useEffect(() => {
+    if (gameState?.phase === 'finished') {
+      localStorage.removeItem('activeRoomId')
+    }
+  }, [gameState?.phase])
+
   // Handle lobby music - autoplay when entering lobby, stop when game starts
   useEffect(() => {
     gameStartedRef.current = gameStarted
@@ -175,6 +182,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       try {
         const response = await fetch(`/api/rooms/${roomId}`)
         if (!response.ok) {
+          // Room no longer exists, clear stored room ID
+          localStorage.removeItem('activeRoomId')
           throw new Error('Room not found')
         }
 
@@ -389,8 +398,9 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         throw new Error(data.error || 'Failed to join room')
       }
 
-      // Save nickname and mark as joined
+      // Save nickname, room ID, and mark as joined
       localStorage.setItem('nickname', joinNickname.trim())
+      localStorage.setItem('activeRoomId', roomId)
       setNeedsToJoin(false)
     } catch (err) {
       setJoinError(err instanceof Error ? err.message : 'Failed to join room')
