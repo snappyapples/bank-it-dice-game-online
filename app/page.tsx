@@ -133,6 +133,14 @@ function HomeContent() {
             </div>
           </div>
         )}
+
+        {/* Other Games */}
+        <div className="mt-12 text-center text-gray-500 text-sm">
+          <span>More games: </span>
+          <a href="https://cubebluff.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">CubeBluff</a>
+          <span className="mx-2">·</span>
+          <a href="https://paper-maner-io-2.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">Paper.io</a>
+        </div>
       </div>
 
       {/* Modals */}

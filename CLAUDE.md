@@ -76,11 +76,16 @@ User Action → API Route → Pure Game Logic → New State → Supabase → Pol
 
 **Client Synchronization** (`app/room/[roomId]/page.tsx`):
 - Polls every 2 seconds
-- Player identity in localStorage (`playerId`, `nickname`)
+- Player identity in localStorage (`playerId`, `nickname`, `activeRoomId`)
 - **Important:** Always read fresh `playerId` from localStorage for API calls (state can be stale)
 - Uses `pendingGameState` pattern to delay UI updates until dice animation completes
 - Tracks `lastBankedAt` to show banking overlay for other players
 - **Separate error states:** `error` (cleared by polling) vs `joinError` (persists until cleared by user action) - prevents join errors from disappearing
+
+**Rejoin Game Feature:**
+- `activeRoomId` stored in localStorage when creating/joining a game
+- Home page shows "Rejoin Game" button if active game exists
+- Cleared when game finishes or room no longer exists
 
 ### Game Phases
 
@@ -91,12 +96,13 @@ User Action → API Route → Pure Game Logic → New State → Supabase → Pol
 
 ### Banking Window
 
-After each roll (except the first of each round), there's a 10-second banking window before the next player can roll:
+After each roll (except the first of each round), there's a 7-second banking window before the next player can roll:
 - **Server-enforced:** `canRollNow()` in `lib/gameLogic.ts` checks `lastRollAt` timestamp
 - **Roll API validation:** Returns 400 error if banking window still active
 - **UI countdown:** ActionPanel shows "Wait Xs..." for current player, "Bank now! (Xs)" for others
-- **Constant:** `BANKING_WINDOW_MS = 10000` in `lib/gameLogic.ts` and `components/ActionPanel.tsx`
+- **Constant:** `BANKING_WINDOW_MS = 7000` in `lib/gameLogic.ts`, `components/ActionPanel.tsx`, and `app/room/[roomId]/page.tsx`
 - First roll of each round has no delay (`lastRollAt` is cleared in `startNewRound()`)
+- **Skipped when one player left:** No banking window if everyone else has already banked
 
 ### 3D Dice Animation
 
@@ -203,7 +209,7 @@ Database schema in `supabase/schema.sql`.
 
 **Leaderboard:** `PlayersPanel` with `showLeaderboard={true}` displays players sorted by score with "X behind" indicators. Current player shown with "👤 You" indicator.
 
-**Up Next Bar:** Horizontal list showing turn order, with current roller highlighted.
+**Up Next Bar:** Horizontal list showing turn order, with current roller highlighted. Shows points behind in parentheses for current player only (e.g., "Jack (-82)"). Always visible, including for the current roller (below roll button).
 
 **Bank Panel:** Displays bank value with Bank It button alongside. Button disabled when bank is zero or player has already banked.
 
@@ -243,3 +249,27 @@ Database schema in `supabase/schema.sql`.
 ### Assets
 
 **Favicon:** `app/icon.svg` and `app/apple-icon.svg` - Lime green dice showing 5-face pattern, matches brand-lime color (#A3E635).
+
+### PWA Support
+
+App is installable as a Progressive Web App:
+- `app/manifest.ts` - Web app manifest with icons and theme colors
+- `hooks/useInstallPrompt.ts` - Hook for custom install UI
+
+**Install Prompt Hook:**
+```typescript
+const { canInstall, showIOSInstructions, promptInstall, dismissIOSInstructions } = useInstallPrompt()
+```
+- `canInstall` - True when `beforeinstallprompt` event captured (Android Chrome, Desktop Chrome/Edge)
+- `showIOSInstructions` - True for iOS Safari users (shows manual "Add to Home Screen" instructions)
+- `promptInstall()` - Triggers native install dialog
+- `dismissIOSInstructions()` - Hides iOS instructions (persisted to localStorage)
+
+**Install UI Locations:**
+- Home page: Install banner below Create/Join cards
+- Header: Small install icon (non-iOS only)
+- Winner screen: "Love Bank It? Install the App!" banner
+
+**iOS Detection:** Uses user agent to detect iOS Safari (the only iOS browser that can install PWAs). Chrome/Firefox on iOS use WebKit and can't trigger `beforeinstallprompt`.
+
+**Standalone Detection:** Checks `window.matchMedia('(display-mode: standalone)')` and `navigator.standalone` to hide install UI when already installed.
