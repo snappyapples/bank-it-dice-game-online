@@ -33,7 +33,7 @@ const SOUNDS: ThemeSounds = {
   doubles: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
   lucky7: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3',
   gameOver: 'https://assets.mixkit.co/active_storage/sfx/2658/2658-preview.mp3',
-  danger: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+  danger: '/sounds/danger.mp3',
   lobbyMusic: LOBBY_MUSIC,
   victory: SHARED_VICTORY,
 }
