@@ -1,6 +1,59 @@
 import { GameState } from './types'
 import { initGame } from './gameLogic'
 import { supabase, RoomRow } from './supabase'
+import { ROOM_WORDS } from './roomWords'
+
+// ============================================================================
+// Room Code Generation
+// ============================================================================
+
+/**
+ * Generate a random alphanumeric code (fallback)
+ */
+function generateRandomCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return code
+}
+
+/**
+ * Get a random available room word, with collision checking
+ * Falls back to random alphanumeric if all words are taken
+ */
+async function getAvailableRoomCode(): Promise<string> {
+  // Shuffle the word list to randomize selection
+  const shuffled = [...ROOM_WORDS].sort(() => Math.random() - 0.5)
+
+  // Try to find an available word (check in batches for efficiency)
+  const batchSize = 20
+  for (let i = 0; i < shuffled.length; i += batchSize) {
+    const batch = shuffled.slice(i, i + batchSize).map(w => w.toUpperCase())
+
+    const { data: existingRooms } = await supabase
+      .from('rooms')
+      .select('id')
+      .in('id', batch)
+
+    const takenCodes = new Set(existingRooms?.map(r => r.id) || [])
+
+    // Find first available word in this batch
+    for (const word of batch) {
+      if (!takenCodes.has(word)) {
+        return word
+      }
+    }
+  }
+
+  // Fallback to random code if all words are taken (very unlikely)
+  return generateRandomCode()
+}
+
+// ============================================================================
+// Game Store Class
+// ============================================================================
 
 interface Room {
   id: string
@@ -14,7 +67,7 @@ interface Room {
 
 class GameStore {
   async createRoom(hostPlayerId: string, hostNickname: string, totalRounds: number): Promise<string> {
-    const roomId = this.generateRoomId()
+    const roomId = await getAvailableRoomCode()
 
     const players = new Map([[hostPlayerId, { nickname: hostNickname, playerId: 'player-0' }]])
     const gameState = initGame([hostNickname], totalRounds)
@@ -245,10 +298,6 @@ class GameStore {
       started: row.started,
       createdAt: new Date(row.created_at).getTime(),
     }
-  }
-
-  private generateRoomId(): string {
-    return Math.random().toString(36).substring(2, 8).toUpperCase()
   }
 
   // Cleanup is now handled by Supabase function in schema.sql
